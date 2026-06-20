@@ -50,32 +50,46 @@ function playChapter(knock: string, broadcast: string): GameState {
 
 // ── 2.1 可達性表：四列逐一驗證 ──────────────────────────────────────────
 
+// 與 ch01 的選項 label 對齊（label 含情境字句）
+const KNOCK_RIGHT = "回敲三下，不多不少";
+const KNOCK_WRONG_COUNT = "胡亂回敲，數目沒把握";
+const KNOCK_IGNORE = "不理會，把頭埋進被子";
+const KNOCK_OPEN = "開門查看";
+const RADIO_LISTEN = "聽完，一個字都不打斷";
+const RADIO_OFF = "關掉";
+
 describe("結局可達性 (計畫 2.1 表)", () => {
   it("第1列 全做對：回敲 + 聽完 → 安息 (rage=1)", () => {
-    const s = playChapter("回敲三下", "聽完");
+    const s = playChapter(KNOCK_RIGHT, RADIO_LISTEN);
     expect(s.rage).toBe(1);
     expect(s.ending).toBe("rest");
     expect(s.permanentLoss).toBe(false);
   });
 
   it("第2列 全做錯：開門 + 關掉 → 魂飛魄散 (rage=6, 不可逆)", () => {
-    const s = playChapter("開門查看", "關掉");
+    const s = playChapter(KNOCK_OPEN, RADIO_OFF);
     expect(s.rage).toBe(6);
     expect(s.ending).toBe("dissipate");
     expect(s.permanentLoss).toBe(true);
   });
 
   it("第3列 缺回敲：不理會 + 聽完 → 魂飛魄散 (truth_clue_knock 缺席)", () => {
-    const s = playChapter("不理會", "聽完");
+    const s = playChapter(KNOCK_IGNORE, RADIO_LISTEN);
     expect(s.collected).not.toContain("truth_clue_knock");
     expect(s.collected).toContain("truth_clue_radio");
     expect(s.ending).toBe("dissipate");
   });
 
   it("第4列 缺收音機：回敲 + 關掉 → 魂飛魄散 (truth_clue_radio 缺席)", () => {
-    const s = playChapter("回敲三下", "關掉");
+    const s = playChapter(KNOCK_RIGHT, RADIO_OFF);
     expect(s.collected).toContain("truth_clue_knock");
     expect(s.collected).not.toContain("truth_clue_radio");
+    expect(s.ending).toBe("dissipate");
+  });
+
+  it("數目錯的回敲不解鎖 truth_clue_knock → 魂飛魄散 (碎片 C 是必要推理)", () => {
+    const s = playChapter(KNOCK_WRONG_COUNT, RADIO_LISTEN);
+    expect(s.collected).not.toContain("truth_clue_knock");
     expect(s.ending).toBe("dissipate");
   });
 });
@@ -96,15 +110,10 @@ describe("引擎機制", () => {
     expect(s.phase).toBe("day");
   });
 
-  it("唯一安息路徑：四種抉擇組合中只有一種給好結局", () => {
-    const combos: [string, string][] = [
-      ["回敲三下", "聽完"],
-      ["回敲三下", "關掉"],
-      ["不理會", "聽完"],
-      ["不理會", "關掉"],
-      ["開門查看", "聽完"],
-      ["開門查看", "關掉"],
-    ];
+  it("唯一安息路徑：所有抉擇組合中只有一種給好結局", () => {
+    const knocks = [KNOCK_RIGHT, KNOCK_WRONG_COUNT, KNOCK_IGNORE, KNOCK_OPEN];
+    const radios = [RADIO_LISTEN, RADIO_OFF];
+    const combos = knocks.flatMap((k) => radios.map((b): [string, string] => [k, b]));
     const restCount = combos.filter(
       ([k, b]) => playChapter(k, b).ending === "rest",
     ).length;

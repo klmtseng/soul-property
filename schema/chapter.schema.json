@@ -41,7 +41,7 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["id", "trigger", "dialogue", "grantsFragment"],
+            "required": ["id", "trigger", "dialogue"],
             "properties": {
               "id": { "type": "string", "minLength": 1 },
               "trigger": { "type": "string", "minLength": 1 },

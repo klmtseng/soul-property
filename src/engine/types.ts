@@ -38,8 +38,11 @@ export interface DayInteraction {
   id: string;
   trigger: string;
   dialogue: string[];
-  /** 完成此互動時授予的 fragment id（同時寫入 collected 旗標集）。 */
-  grantsFragment: string;
+  /**
+   * 完成此互動時授予的 fragment id（同時寫入 collected 旗標集）。
+   * 可省略 —— 省略時為「純角色塑造」互動，不給線索、只加血肉。
+   */
+  grantsFragment?: string;
 }
 
 export interface Fragment {

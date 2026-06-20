@@ -22,9 +22,14 @@
 `startRage=3`、`rageThreshold=3`;回敲 −1 / 不理會 +1 / 開門 +2(scare)、聽完 −1 / 關掉 +1。
 安息唯一路徑 = 回敲 + 聽完(rage=1，兩線索旗標到齊)。
 
+### 已部署（手機測試用）
+
+- 線上:https://soul-property.vercel.app  · repo:https://github.com/klmtseng/soul-property
+- `git push` 自動重新部署（vercel git connect 已串）。
+
 ### 待人類驗收（檢查點，spec 7.3）
 
-- [ ] `npm run dev` 走兩結局，確認**情緒是否到位**（恐怖→鼻酸）。
+- [ ] 手機開 https://soul-property.vercel.app 走兩結局，確認**情緒是否到位**（恐怖→鼻酸）。
 - [ ] review 重點一:立繪表情驅動（白天 calm；夜晚由 rage 區間 calm/uneasy/broken；結局 rest=calm、dissipate=broken）。
 - [ ] review 重點二:魂飛魄散畫面 —— 遺憾承載、無輕佻立即重玩按鈕（7 秒後才浮低調入口）。
 

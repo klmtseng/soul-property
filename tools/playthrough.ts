@@ -60,7 +60,7 @@ function playDay(s: GameState): GameState {
       s = reduce(s, { type: "ADVANCE_DIALOGUE" });
       if (s.activeInteractionId) console.log("    " + render(s));
     }
-    console.log(`    → 收下碎片`);
+    console.log(it.grantsFragment ? `    → 收下一片執念碎片` : `    → （純角色細節，無碎片）`);
   }
   return s;
 }
@@ -100,5 +100,5 @@ function playPath(title: string, knock: string, broadcast: string) {
   console.log("  " + render(s).replace(/\n/g, "\n  "));
 }
 
-playPath("路徑 A —— 回敲 + 聽完（唯一安息路徑）", "回敲三下", "聽完");
+playPath("路徑 A —— 回敲三下 + 聽完（唯一安息路徑）", "回敲三下，不多不少", "聽完，一個字都不打斷");
 playPath("路徑 B —— 開門 + 關掉（魂飛魄散）", "開門查看", "關掉");

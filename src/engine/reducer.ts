@@ -49,11 +49,13 @@ export function reduce(state: GameState, action: Action): GameState {
       if (state.dialogueCursor < it.dialogue.length - 1) {
         return { ...state, dialogueCursor: state.dialogueCursor + 1 };
       }
-      // 對話讀完：收下碎片旗標，回到互動選單。
+      // 對話讀完：若此互動給線索則收下碎片旗標，回到互動選單。
       return {
         ...state,
         doneInteractions: [...state.doneInteractions, it.id],
-        collected: addFlag(state.collected, it.grantsFragment),
+        collected: it.grantsFragment
+          ? addFlag(state.collected, it.grantsFragment)
+          : state.collected,
         activeInteractionId: null,
         dialogueCursor: 0,
       };

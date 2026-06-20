@@ -17,6 +17,7 @@ export type View =
       portrait: PortraitView;
       interactions: InteractionMenuItem[];
       fragments: string[]; // 已蒐集到的碎片描述（按蒐集順序）
+      fragmentTotal: number; // 本章線索碎片總數
       canEnterNight: boolean;
     }
   | {
@@ -121,6 +122,7 @@ export function getView(state: GameState): View {
           done: state.doneInteractions.includes(i.id),
         })),
         fragments: collectedFragments,
+        fragmentTotal: chapter.day.fragments.length,
         canEnterNight:
           state.doneInteractions.length === chapter.day.interactions.length,
       };

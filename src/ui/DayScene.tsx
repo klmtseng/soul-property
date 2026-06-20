@@ -45,7 +45,9 @@ export function DayScene({
 
         {view.fragments.length > 0 && (
           <div className="fragments">
-            <div className="fragments__title">執念碎片 ({view.fragments.length}/3)</div>
+            <div className="fragments__title">
+              執念碎片 ({view.fragments.length}/{view.fragmentTotal})
+            </div>
             <ul>
               {view.fragments.map((f, i) => (
                 <li key={i}>{f}</li>

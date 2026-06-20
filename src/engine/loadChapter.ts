@@ -39,9 +39,9 @@ export function assertReferentialIntegrity(chapter: ChapterData): void {
   // 所有能進入 collected 集合的旗標來源
   const grantableFlags = new Set<string>([...fragmentIds, ...unlockIds]);
 
-  // 每個白天互動的 grantsFragment 必須指向真實 fragment
+  // 每個白天互動「若有」grantsFragment，必須指向真實 fragment
   for (const it of chapter.day.interactions) {
-    if (!fragmentIds.has(it.grantsFragment)) {
+    if (it.grantsFragment && !fragmentIds.has(it.grantsFragment)) {
       errors.push(
         `interaction "${it.id}".grantsFragment="${it.grantsFragment}" 找不到對應 fragment`,
       );
