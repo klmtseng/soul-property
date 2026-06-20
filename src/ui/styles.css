@@ -1,0 +1,319 @@
+:root {
+  --bg-day: #e6e0d2;
+  --bg-night: #0a0a0f;
+  --ink: #f3efe7;
+  --ink-dim: #b9b2a6;
+  --accent: #c9a26b;
+  --danger: #7a3b52;
+  --panel: rgba(12, 12, 20, 0.72);
+  font-family: "Noto Sans CJK TC", "PingFang TC", system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: #000;
+}
+
+/* 手機直式單手為主；PC 上置中成一條直式畫面 */
+.stage {
+  min-height: 100%;
+  display: flex;
+  justify-content: center;
+  background-size: cover;
+  background-position: center;
+  transition: background-color 0.6s ease;
+}
+
+.stage--day {
+  background-color: var(--bg-day);
+}
+.stage--night {
+  background-color: var(--bg-night);
+}
+
+.stage__inner {
+  width: 100%;
+  max-width: 480px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 20px 18px calc(20px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  color: var(--ink);
+}
+
+.stage--day .stage__inner {
+  color: #2a2620;
+}
+
+.scene__body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+}
+
+/* ── 立繪 ───────────────────────────────────────────── */
+.portrait {
+  display: flex;
+  justify-content: center;
+  margin-top: 8px;
+}
+.portrait img {
+  width: 58%;
+  max-width: 240px;
+  border-radius: 10px;
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.5));
+  transition: filter 0.4s ease;
+}
+.portrait--broken img {
+  filter: drop-shadow(0 0 22px rgba(122, 59, 82, 0.8)) saturate(0.7);
+}
+.portrait__missing {
+  padding: 40px;
+  border: 1px dashed var(--ink-dim);
+  color: var(--ink-dim);
+}
+
+/* ── 階段標籤 ───────────────────────────────────────── */
+.phase-tag {
+  text-align: center;
+  letter-spacing: 0.3em;
+  font-size: 0.78rem;
+  color: var(--accent);
+  margin: 4px 0;
+}
+.phase-tag--day {
+  color: #8a6d3b;
+}
+
+/* ── 開場 ───────────────────────────────────────────── */
+.intro {
+  text-align: center;
+  justify-content: center;
+}
+.intro__title {
+  font-size: 1.9rem;
+  letter-spacing: 0.15em;
+  margin: 10px 0 0;
+}
+.intro__sub {
+  color: var(--ink-dim);
+  margin: 4px 0 18px;
+}
+.intro__obsession {
+  font-size: 1.2rem;
+  color: var(--accent);
+  margin: 10px 24px 24px;
+}
+
+/* ── 對話框 ─────────────────────────────────────────── */
+.dialogue {
+  text-align: left;
+  width: 100%;
+  background: var(--panel);
+  border: 1px solid rgba(201, 162, 107, 0.25);
+  border-radius: 12px;
+  padding: 16px 18px;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  margin-top: auto;
+}
+.dialogue__speaker {
+  color: var(--accent);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.dialogue__line {
+  font-size: 1.1rem;
+  line-height: 1.7;
+  min-height: 2.6em;
+}
+.dialogue__hint {
+  text-align: right;
+  color: var(--ink-dim);
+  font-size: 0.8rem;
+  margin-top: 10px;
+}
+
+/* ── 白天選單 ───────────────────────────────────────── */
+.day-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: auto;
+}
+.interaction-btn {
+  text-align: left;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(138, 109, 59, 0.4);
+  background: rgba(255, 255, 255, 0.55);
+  color: #2a2620;
+  font: inherit;
+  line-height: 1.5;
+}
+.interaction-btn:disabled {
+  opacity: 0.5;
+}
+.fragments {
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 0.92rem;
+  color: #3a352c;
+}
+.fragments__title {
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: #8a6d3b;
+}
+.fragments ul {
+  margin: 0;
+  padding-left: 18px;
+}
+.fragments li {
+  margin: 4px 0;
+}
+
+/* ── 夜晚守則 + 抉擇 ─────────────────────────────────── */
+.rules {
+  background: var(--panel);
+  border: 1px solid rgba(201, 162, 107, 0.25);
+  border-radius: 10px;
+  padding: 6px 14px;
+  font-size: 0.9rem;
+}
+.rules__toggle {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 700;
+  padding: 8px 0;
+  width: 100%;
+  text-align: left;
+}
+.rules ol {
+  margin: 0 0 10px;
+  padding-left: 20px;
+  color: var(--ink-dim);
+  line-height: 1.6;
+}
+
+.choices {
+  margin-top: auto;
+}
+.choices__prompt {
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 16px 18px;
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin-bottom: 14px;
+}
+.choices__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── 通用按鈕（拇指友善尺寸）────────────────────────── */
+.choice-btn,
+.primary-btn {
+  padding: 16px;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 1.05rem;
+  border: 1px solid var(--accent);
+  background: rgba(201, 162, 107, 0.14);
+  color: var(--ink);
+  cursor: pointer;
+  min-height: 52px;
+}
+.primary-btn {
+  background: var(--accent);
+  color: #1a140c;
+  font-weight: 700;
+  margin-top: 14px;
+}
+.primary-btn:disabled {
+  background: rgba(201, 162, 107, 0.25);
+  color: var(--ink-dim);
+  border-color: transparent;
+  cursor: default;
+}
+.stage--day .choice-btn {
+  color: #2a2620;
+}
+
+/* ── 真相 ───────────────────────────────────────────── */
+.truth__text {
+  white-space: pre-line;
+  line-height: 1.9;
+  font-size: 1.05rem;
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 18px;
+}
+
+/* ── 結局 ───────────────────────────────────────────── */
+.ending {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  justify-content: center;
+  gap: 16px;
+}
+.ending__title {
+  font-size: 1.5rem;
+  letter-spacing: 0.2em;
+}
+.ending--rest .ending__title {
+  color: var(--accent);
+}
+.ending--dissipate .ending__title {
+  color: var(--danger);
+}
+.ending__text {
+  white-space: pre-line;
+  line-height: 1.9;
+  max-width: 32ch;
+}
+.ending__loss {
+  color: var(--danger);
+  font-size: 0.95rem;
+  letter-spacing: 0.05em;
+}
+/* 壞結局的重啟入口刻意低調，不沖淡遺憾 */
+.ending__quiet-exit {
+  margin-top: 40px;
+  background: none;
+  border: none;
+  color: rgba(120, 120, 130, 0.5);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  animation: fade-in 2s ease;
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

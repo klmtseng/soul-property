@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 1,
+  "chapterId": "ch01_knocking",
+  "resident": {
+    "id": "chen",
+    "name": "陳秀英",
+    "age": 78,
+    "portraits": {
+      "calm": "chen_calm.png",
+      "uneasy": "chen_uneasy.png",
+      "broken": "chen_broken.png"
+    },
+    "obsessionOneLiner": "我在等他回敲。"
+  },
+  "day": {
+    "interactions": [
+      {
+        "id": "wall",
+        "trigger": "她總在牆邊徘徊，手指輕敲牆面。詢問她。",
+        "dialogue": [
+          "……我在等他回敲。",
+          "你問是誰？……我也說不清了。"
+        ],
+        "grantsFragment": "fragA"
+      },
+      {
+        "id": "radio",
+        "trigger": "房裡一台老收音機，固定在一個沒有訊號的頻率。詢問收音機。",
+        "dialogue": [
+          "這個以前會通的。",
+          "（她的眼神溫柔了起來。）"
+        ],
+        "grantsFragment": "fragB"
+      },
+      {
+        "id": "gesture",
+        "trigger": "她反覆比著「三」的手勢。追問這個動作。",
+        "dialogue": [
+          "敲三下……那是一個約定。",
+          "可是……我想不起來，是跟誰約好的了。"
+        ],
+        "grantsFragment": "fragC"
+      }
+    ],
+    "fragments": [
+      { "id": "fragA", "text": "她說「我在等他回敲」，但說不清「他」是誰。" },
+      { "id": "fragB", "text": "收音機停在一個沒訊號的頻率，她說「這個以前會通的」，眼神溫柔。" },
+      { "id": "fragC", "text": "她記得「敲三下」是一個約定，但想不起對方。" }
+    ]
+  },
+  "night": {
+    "startRage": 3,
+    "rageThreshold": 3,
+    "rules": [
+      "聽到敲牆聲時，先數敲了幾下。",
+      "若敲三下，你必須回敲三下。",
+      "不要開她的房門查看。門後的，不是她。",
+      "收音機自行響起時，不要關掉，聽完為止。"
+    ],
+    "choices": [
+      {
+        "id": "knock",
+        "prompt": "半夜傳來敲牆聲，三下。",
+        "options": [
+          {
+            "label": "回敲三下",
+            "rageDelta": -1,
+            "unlocks": "truth_clue_knock",
+            "outcome": "敲牆聲溫和地停下，怨氣下降。牆的另一頭，彷彿有人聽見了。"
+          },
+          {
+            "label": "不理會",
+            "rageDelta": 1,
+            "outcome": "敲擊越來越急、越來越重，牆面浮出裂痕，怨氣上升。"
+          },
+          {
+            "label": "開門查看",
+            "rageDelta": 2,
+            "scare": true,
+            "outcome": "門後是她中風倒地、伸手搆不到牆的景象。怨氣大幅上升。"
+          }
+        ]
+      },
+      {
+        "id": "broadcast",
+        "prompt": "收音機在無人時自行響起，傳出模糊人聲。",
+        "options": [
+          {
+            "label": "聽完",
+            "rageDelta": -1,
+            "unlocks": "truth_clue_radio",
+            "outcome": "雜訊中是一位老先生的聲音，在喊她的名字。一條真相關鍵被解開了。"
+          },
+          {
+            "label": "關掉",
+            "rageDelta": 1,
+            "outcome": "你錯過了雜訊裡的那個聲音。某條真相，就此沉默。"
+          }
+        ]
+      }
+    ]
+  },
+  "truth": {
+    "revealCondition": ["fragA", "fragB", "fragC", "truth_clue_knock", "truth_clue_radio"],
+    "text": "陳秀英與隔壁獨居的老先生有個約定：每天清晨互敲牆三下報平安，那是兩個孤獨老人之間唯一的默契。某天她中風倒地，敲不動牆；老先生以為她只是晚起，沒有在意。等發現時已經太遲。\n\n她的執念不是怨恨，是孤獨——她只是還在等一個「回敲」。而收音機的真相：老先生後來也走了，也在另一頭找她。"
+  },
+  "endings": {
+    "good": {
+      "id": "rest",
+      "text": "你回敲了三下、聽完了收音機，拼出真相，最後讓收音機重新接上老先生的頻率，兩人「重新通上線」。陳秀英安心離開，離去前在牆上輕輕敲了三下，作別。"
+    },
+    "bad": {
+      "id": "dissipate",
+      "permanentLoss": true,
+      "text": "某夜，敲牆聲停了——永遠停了。房間空著，收音機沉默。她不是被超渡，是徹底消散。\n\n你本來，是可以回敲的。"
+    }
+  }
+}
