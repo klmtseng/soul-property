@@ -11,6 +11,7 @@ export interface InteractionMenuItem {
 }
 
 export type View =
+  | { phase: "opening"; speaker?: string; line: string; hasNext: boolean }
   | { phase: "intro"; residentName: string; age: number; obsession: string; portrait: PortraitView }
   | {
       phase: "day";
@@ -86,6 +87,17 @@ export function getView(state: GameState): View {
   const portrait = portraitOf(state);
 
   switch (state.phase) {
+    case "opening": {
+      const lines = chapter.opening ?? [];
+      const beat = lines[state.openingCursor];
+      return {
+        phase: "opening",
+        speaker: beat?.speaker,
+        line: beat?.text ?? "",
+        hasNext: state.openingCursor < lines.length - 1,
+      };
+    }
+
     case "intro":
       return {
         phase: "intro",

@@ -35,6 +35,12 @@ function chooseByLabel(s: GameState, label: string): GameState {
   return reduce(s, { type: "ACK_OUTCOME" });
 }
 
+/** 走完開場〈交接〉到 intro，再 BEGIN 進白天。 */
+function enterDay(s: GameState): GameState {
+  while (s.phase === "opening") s = reduce(s, { type: "ADVANCE_OPENING" });
+  return reduce(s, { type: "BEGIN" });
+}
+
 interface Path {
   skipDay?: string[];
   knock: string;
@@ -45,7 +51,7 @@ interface Path {
 
 function play(path: Path): GameState {
   let s = initState(ch01);
-  s = reduce(s, { type: "BEGIN" });
+  s = enterDay(s);
   s = playDay(s, path.skipDay);
   expect(s.phase).toBe("night");
   s = chooseByLabel(s, path.knock);
@@ -119,7 +125,7 @@ describe("四級結局可達性", () => {
 describe("requires 選項過濾", () => {
   it("沒學到歌(跳過 humming) → grief 關卡看不到「跟著哼」", () => {
     let s = initState(ch01);
-    s = reduce(s, { type: "BEGIN" });
+    s = enterDay(s);
     s = playDay(s, ["humming"]);
     s = chooseByLabel(s, "回敲，試著回應她");
     s = chooseByLabel(s, "聽完，一個字都不打斷");
@@ -131,7 +137,7 @@ describe("requires 選項過濾", () => {
 
   it("學到歌 → grief 關卡看得到「跟著哼」", () => {
     let s = initState(ch01);
-    s = reduce(s, { type: "BEGIN" });
+    s = enterDay(s);
     s = playDay(s); // 全部互動，含 humming
     s = chooseByLabel(s, "回敲，試著回應她");
     s = chooseByLabel(s, "聽完，一個字都不打斷");
@@ -142,7 +148,7 @@ describe("requires 選項過濾", () => {
 
   it("L1 沒回應(不理會) → L4 看不到「敲完最後三下」(requires answered)", () => {
     let s = initState(ch01);
-    s = reduce(s, { type: "BEGIN" });
+    s = enterDay(s);
     s = playDay(s);
     s = chooseByLabel(s, "不理會，把頭埋進被子");
     s = chooseByLabel(s, "聽完，一個字都不打斷");
@@ -156,7 +162,7 @@ describe("requires 選項過濾", () => {
 
   it("L1 有回應(回敲) → L4 看得到「敲完最後三下」", () => {
     let s = initState(ch01);
-    s = reduce(s, { type: "BEGIN" });
+    s = enterDay(s);
     s = playDay(s);
     s = chooseByLabel(s, "回敲，試著回應她");
     s = chooseByLabel(s, "聽完，一個字都不打斷");
@@ -173,7 +179,7 @@ describe("requires 選項過濾", () => {
 describe("引擎機制", () => {
   it("白天線索碎片未齊不得入夜（flavor 互動可選）", () => {
     let s = initState(ch01);
-    s = reduce(s, { type: "BEGIN" });
+    s = enterDay(s);
     const wall = ch01.day.interactions[0];
     s = reduce(s, { type: "OPEN_INTERACTION", id: wall.id });
     for (let i = 0; i < wall.dialogue.length; i++) s = reduce(s, { type: "ADVANCE_DIALOGUE" });
@@ -188,10 +194,25 @@ describe("引擎機制", () => {
     expect(s).toEqual(snapshot);
   });
 
+  it("開場 opening → intro → day 的相位轉換", () => {
+    let s = initState(ch01);
+    expect(s.phase).toBe("opening");
+    const lines = ch01.opening!;
+    // 點完每一拍才會進 intro
+    for (let i = 0; i < lines.length - 1; i++) {
+      s = reduce(s, { type: "ADVANCE_OPENING" });
+      expect(s.phase).toBe("opening");
+    }
+    s = reduce(s, { type: "ADVANCE_OPENING" });
+    expect(s.phase).toBe("intro");
+    s = reduce(s, { type: "BEGIN" });
+    expect(s.phase).toBe("day");
+  });
+
   it("getView 在各 phase 都能產出對應 view", () => {
     let s = initState(ch01);
-    expect(getView(s).phase).toBe("intro");
-    s = reduce(s, { type: "BEGIN" });
+    expect(getView(s).phase).toBe("opening");
+    s = enterDay(s);
     expect(getView(s).phase).toBe("day");
     s = playDay(s);
     expect(getView(s).phase).toBe("night");

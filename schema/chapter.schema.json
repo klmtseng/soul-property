@@ -31,6 +31,18 @@
   "properties": {
     "schemaVersion": { "type": "integer", "minimum": 1 },
     "chapterId": { "type": "string", "minLength": 1 },
+    "opening": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text"],
+        "properties": {
+          "speaker": { "type": "string", "minLength": 1 },
+          "text": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
     "resident": {
       "type": "object",
       "additionalProperties": false,

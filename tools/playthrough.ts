@@ -19,6 +19,8 @@ const expr = (s: GameState) => `[立繪:${currentExpression(s)}]`;
 function render(s: GameState): string {
   const v = getView(s);
   switch (v.phase) {
+    case "opening":
+      return `${expr(s)} 〔開場〕${v.speaker ? v.speaker + "：" : "（旁白）"}${v.line}`;
     case "intro":
       return `${expr(s)} 〔開場〕${v.residentName}（${v.age}）「${v.obsession}」`;
     case "day":
@@ -60,6 +62,11 @@ function choose(s: GameState, label: string): GameState {
 function playPath(title: string, skip: string[], picks: [string, string, string, string]) {
   console.log(`\n${"═".repeat(64)}\n${title}\n${"═".repeat(64)}`);
   let s = initState(ch);
+  console.log("\n── 開場〈交接〉──");
+  while (getView(s).phase === "opening") {
+    console.log("  " + render(s));
+    s = reduce(s, { type: "ADVANCE_OPENING" });
+  }
   console.log(render(s));
   s = reduce(s, { type: "BEGIN" });
   console.log("\n── 白天 ──");

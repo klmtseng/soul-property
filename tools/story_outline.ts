@@ -21,6 +21,7 @@ const count = (s: string) =>
 // 模擬一條路徑（白天可跳過 flavor），回傳終局
 function sim(skip: string[], picks: string[]): GameState {
   let s = initState(ch);
+  while (s.phase === "opening") s = reduce(s, { type: "ADVANCE_OPENING" });
   s = reduce(s, { type: "BEGIN" });
   for (const it of ch.day.interactions) {
     if (skip.includes(it.id)) continue;
@@ -110,7 +111,10 @@ const section = (title: string, lines: string[]) => {
   lines.forEach((l) => p(`- ${l}`));
 };
 
-section("開場", [`執念:「${ch.resident.obsessionOneLiner}」`]);
+if (ch.opening?.length) {
+  section("開場〈交接〉", ch.opening.map((o) => (o.speaker ? `${o.speaker}:「${o.text}」` : `（旁白）${o.text}`)));
+}
+section("住戶卡", [`執念:「${ch.resident.obsessionOneLiner}」`]);
 p(`\n#### 白天互動`);
 ch.day.interactions.forEach((it) => {
   const tag = it.grantsFragment ? `碎片 ${it.grantsFragment}` : it.grantsFlag ? `旗標 ${it.grantsFlag}` : "細節";

@@ -9,6 +9,7 @@ import {
 } from "../engine/index.js";
 import { backgroundUrl } from "./assets.js";
 import { Portrait } from "./Portrait.js";
+import { DialogueBox } from "./DialogueBox.js";
 import { DayScene } from "./DayScene.js";
 import { NightScene } from "./NightScene.js";
 import { EndingScreen } from "./EndingScreen.js";
@@ -37,6 +38,18 @@ export function App({ chapter }: { chapter: ChapterData }) {
       style={bg ? { backgroundImage: `url(${bg})` } : undefined}
     >
       <div className="stage__inner">
+        {view.phase === "opening" && (
+          <div className="scene__body opening">
+            <p className="phase-tag phase-tag--day">靈魂物業公司</p>
+            <DialogueBox
+              speaker={view.speaker ?? undefined}
+              line={view.line}
+              hint={view.hasNext ? "▼ 點擊繼續" : "▼ 推開那扇門"}
+              onAdvance={() => dispatch({ type: "ADVANCE_OPENING" })}
+            />
+          </div>
+        )}
+
         {view.phase === "intro" && (
           <div className="scene__body intro">
             <Portrait portrait={view.portrait} />

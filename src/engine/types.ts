@@ -18,9 +18,17 @@ export interface Effect {
   delta: number;
 }
 
+/** 開場敘事的一拍。speaker 省略視為旁白。 */
+export interface OpeningLine {
+  speaker?: string;
+  text: string;
+}
+
 export interface ChapterData {
   schemaVersion: number;
   chapterId: string;
+  /** 進入住戶卡/白天前的開場敘事（選填）。建立世界觀與玩家身分。 */
+  opening?: OpeningLine[];
   resident: {
     id: string;
     name: string;
@@ -92,11 +100,14 @@ export interface NightOption {
 
 // ── 引擎狀態 ──────────────────────────────────────────────────────────────
 
-export type Phase = "intro" | "day" | "night" | "truth" | "ending";
+export type Phase = "opening" | "intro" | "day" | "night" | "truth" | "ending";
 
 export interface GameState {
   chapter: ChapterData;
   phase: Phase;
+
+  // 開場
+  openingCursor: number;
 
   // 白天
   doneInteractions: string[];
@@ -119,6 +130,7 @@ export interface GameState {
 
 // ── Actions（呈現層唯一能對引擎做的事）──────────────────────────────────
 export type Action =
+  | { type: "ADVANCE_OPENING" }
   | { type: "BEGIN" }
   | { type: "OPEN_INTERACTION"; id: string }
   | { type: "ADVANCE_DIALOGUE" }

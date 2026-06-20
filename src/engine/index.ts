@@ -8,6 +8,7 @@ export type {
   EndingRank,
   Expression,
   GameState,
+  OpeningLine,
   Phase,
 } from "./types.js";
 export { loadChapter, assertReferentialIntegrity } from "./loadChapter.js";

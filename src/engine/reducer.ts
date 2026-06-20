@@ -5,7 +5,8 @@ import { evalCondition, visibleOptions } from "./conditions.js";
 export function initState(chapter: ChapterData): GameState {
   return {
     chapter,
-    phase: "intro",
+    phase: chapter.opening && chapter.opening.length > 0 ? "opening" : "intro",
+    openingCursor: 0,
     doneInteractions: [],
     activeInteractionId: null,
     dialogueCursor: 0,
@@ -35,6 +36,15 @@ export function reduce(state: GameState, action: Action): GameState {
   const { chapter } = state;
 
   switch (action.type) {
+    case "ADVANCE_OPENING": {
+      if (state.phase !== "opening") return state;
+      const lines = chapter.opening ?? [];
+      if (state.openingCursor < lines.length - 1) {
+        return { ...state, openingCursor: state.openingCursor + 1 };
+      }
+      return { ...state, phase: "intro" };
+    }
+
     case "BEGIN": {
       if (state.phase !== "intro") return state;
       return { ...state, phase: "day" };
