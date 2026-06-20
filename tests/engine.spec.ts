@@ -65,7 +65,7 @@ function rankOf(s: GameState): EndingRank {
 describe("四級結局可達性", () => {
   it("最好(best)：回敲+聽完+跟著哼+敲三下 → best", () => {
     const s = play({
-      knock: "回敲三下，不多不少",
+      knock: "回敲，試著回應她",
       radio: "聽完，一個字都不打斷",
       grief: "跟著哼，替她接上下半句",
       farewell: "替那個敲不動的早晨，敲完最後三下",
@@ -75,26 +75,29 @@ describe("四級結局可達性", () => {
     expect(s.collected).toEqual(expect.arrayContaining(["learned_song", "soothed"]));
   });
 
-  it("好(good)：兩線索齊但沒接到歌(出聲安撫) → good", () => {
+  it("好(good)：回應+聽完+敲三下，但沒接到歌(出聲安撫) → good", () => {
     const s = play({
-      knock: "回敲三下，不多不少",
+      knock: "回敲，試著回應她",
       radio: "聽完，一個字都不打斷",
       grief: "出聲安撫她",
-      farewell: "沉默地陪著她",
+      farewell: "替那個敲不動的早晨，敲完最後三下",
     });
     expect(rankOf(s)).toBe("good");
+    expect(s.collected).toContain("truth_clue_knock");
     expect(s.collected).not.toContain("soothed");
   });
 
-  it("壞(bad)：關掉收音機(缺 truth_clue_radio)、未開門 → bad(不可逆)", () => {
+  it("壞(bad)：回應了也敲了三下，但關掉收音機(缺 truth_clue_radio) → bad(不可逆)", () => {
     const s = play({
-      knock: "回敲三下，不多不少",
+      knock: "回敲，試著回應她",
       radio: "關掉",
       grief: "出聲安撫她",
-      farewell: "沉默地陪著她",
+      farewell: "替那個敲不動的早晨，敲完最後三下",
     });
     expect(rankOf(s)).toBe("bad");
     expect(s.permanentLoss).toBe(true);
+    expect(s.collected).toContain("truth_clue_knock");
+    expect(s.collected).not.toContain("truth_clue_radio");
     expect(s.collected).not.toContain("door_opened");
   });
 
@@ -118,7 +121,7 @@ describe("requires 選項過濾", () => {
     let s = initState(ch01);
     s = reduce(s, { type: "BEGIN" });
     s = playDay(s, ["humming"]);
-    s = chooseByLabel(s, "回敲三下，不多不少");
+    s = chooseByLabel(s, "回敲，試著回應她");
     s = chooseByLabel(s, "聽完，一個字都不打斷");
     const grief = ch01.night.choices[s.nightChoiceIndex];
     const labels = visibleOptions(grief, s.collected, s.vars).map((o) => o.label);
@@ -130,11 +133,38 @@ describe("requires 選項過濾", () => {
     let s = initState(ch01);
     s = reduce(s, { type: "BEGIN" });
     s = playDay(s); // 全部互動，含 humming
-    s = chooseByLabel(s, "回敲三下，不多不少");
+    s = chooseByLabel(s, "回敲，試著回應她");
     s = chooseByLabel(s, "聽完，一個字都不打斷");
     const grief = ch01.night.choices[s.nightChoiceIndex];
     const labels = visibleOptions(grief, s.collected, s.vars).map((o) => o.label);
     expect(labels).toContain("跟著哼，替她接上下半句");
+  });
+
+  it("L1 沒回應(不理會) → L4 看不到「敲完最後三下」(requires answered)", () => {
+    let s = initState(ch01);
+    s = reduce(s, { type: "BEGIN" });
+    s = playDay(s);
+    s = chooseByLabel(s, "不理會，把頭埋進被子");
+    s = chooseByLabel(s, "聽完，一個字都不打斷");
+    s = chooseByLabel(s, "出聲安撫她");
+    const farewell = ch01.night.choices[s.nightChoiceIndex];
+    const labels = visibleOptions(farewell, s.collected, s.vars).map((o) => o.label);
+    expect(farewell.id).toBe("farewell");
+    expect(s.collected).not.toContain("answered");
+    expect(labels).not.toContain("替那個敲不動的早晨，敲完最後三下");
+  });
+
+  it("L1 有回應(回敲) → L4 看得到「敲完最後三下」", () => {
+    let s = initState(ch01);
+    s = reduce(s, { type: "BEGIN" });
+    s = playDay(s);
+    s = chooseByLabel(s, "回敲，試著回應她");
+    s = chooseByLabel(s, "聽完，一個字都不打斷");
+    s = chooseByLabel(s, "出聲安撫她");
+    const farewell = ch01.night.choices[s.nightChoiceIndex];
+    const labels = visibleOptions(farewell, s.collected, s.vars).map((o) => o.label);
+    expect(s.collected).toContain("answered");
+    expect(labels).toContain("替那個敲不動的早晨，敲完最後三下");
   });
 });
 

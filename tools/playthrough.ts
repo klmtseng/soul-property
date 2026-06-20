@@ -74,8 +74,8 @@ function playPath(title: string, skip: string[], picks: [string, string, string,
   console.log("\n── 結局 ──\n  " + render(s).replace(/\n/g, "\n  "));
 }
 
-playPath("最好結局 —— 全做對 + 接住歌", [], [
-  "回敲三下，不多不少",
+playPath("最好結局 —— 回應 + 接住歌 + 最後想通三下", [], [
+  "回敲，試著回應她",
   "聽完，一個字都不打斷",
   "跟著哼，替她接上下半句",
   "替那個敲不動的早晨，敲完最後三下",
