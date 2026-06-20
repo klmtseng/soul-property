@@ -11,7 +11,7 @@ export interface InteractionMenuItem {
 }
 
 export type View =
-  | { phase: "opening"; speaker?: string; line: string; hasNext: boolean }
+  | { phase: "opening"; speaker?: string; line: string; hasNext: boolean; portraitFile?: string }
   | { phase: "intro"; residentName: string; age: number; obsession: string; portrait: PortraitView }
   | {
       phase: "day";
@@ -95,6 +95,7 @@ export function getView(state: GameState): View {
         speaker: beat?.speaker,
         line: beat?.text ?? "",
         hasNext: state.openingCursor < lines.length - 1,
+        portraitFile: beat?.speaker ? chapter.cast?.[beat.speaker] : undefined,
       };
     }
 

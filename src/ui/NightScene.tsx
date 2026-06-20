@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Action, View } from "../engine/index.js";
 import { Portrait } from "./Portrait.js";
-import { DialogueBox } from "./DialogueBox.js";
+import { VNText } from "./VNText.js";
 import { ChoiceList } from "./ChoiceList.js";
 
 type NightView = Extract<View, { phase: "night" }>;
@@ -18,11 +18,11 @@ export function NightScene({
   if (view.mode === "outcome") {
     return (
       <div className="scene__body scene__body--night">
-        <Portrait portrait={view.portrait} />
-        <DialogueBox
-          line={view.outcome}
+        <Portrait file={view.portrait.file} expression={view.portrait.expression} />
+        <VNText
+          text={view.outcome}
           hint="▼ 繼續"
-          onAdvance={() => dispatch({ type: "ACK_OUTCOME" })}
+          onComplete={() => dispatch({ type: "ACK_OUTCOME" })}
         />
       </div>
     );
@@ -30,7 +30,7 @@ export function NightScene({
 
   return (
     <div className="scene__body scene__body--night">
-      <Portrait portrait={view.portrait} />
+      <Portrait file={view.portrait.file} expression={view.portrait.expression} />
       <p className="phase-tag phase-tag--night">夜晚 · 恐怖層</p>
 
       <div className={`rules ${rulesOpen ? "" : "rules--collapsed"}`}>

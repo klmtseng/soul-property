@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { EndingRank, View } from "../engine/index.js";
 import { Portrait } from "./Portrait.js";
+import { VNText } from "./VNText.js";
 
 type EndingView = Extract<View, { phase: "ending" }>;
 
@@ -18,26 +19,20 @@ export function EndingScreen({
   view: EndingView;
   onRestart: () => void;
 }) {
-  // bad/worst 的情感重量靠遺憾承載 —— 刻意不給輕佻的立即重玩按鈕，
-  // 讓沉默留久一點，過一段時間才浮出極低調的入口。
   const isBad = view.rank === "bad" || view.rank === "worst";
-  const [showExit, setShowExit] = useState(false);
-  useEffect(() => {
-    const delay = isBad ? 7000 : 2500;
-    const t = setTimeout(() => setShowExit(true), delay);
-    return () => clearTimeout(t);
-  }, [isBad]);
+  const [read, setRead] = useState(false);
 
   return (
     <div className={`ending ending--${view.rank}`}>
-      <Portrait portrait={view.portrait} />
+      <Portrait file={view.portrait.file} expression={view.portrait.expression} />
       <div className="ending__title">{TITLES[view.rank]}</div>
-      <p className="ending__text">{view.text}</p>
-      {isBad && view.permanentLoss && (
+      <VNText text={view.text} hint="　" onComplete={() => setRead(true)} />
+      {read && isBad && view.permanentLoss && (
         <p className="ending__loss">她不會再回來了。這一局，不能重來。</p>
       )}
 
-      {showExit &&
+      {/* bad/worst 讀完才浮出極低調的重啟入口，不沖淡遺憾 */}
+      {read &&
         (isBad ? (
           <button className="ending__quiet-exit" onClick={onRestart}>
             ——（重新開始）

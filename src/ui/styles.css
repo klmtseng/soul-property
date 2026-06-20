@@ -145,6 +145,32 @@ body {
   color: var(--ink-dim);
   font-size: 0.8rem;
   margin-top: 10px;
+  min-height: 1.1em;
+}
+.dialogue__caret {
+  color: var(--accent);
+  animation: caret-blink 0.7s steps(1) infinite;
+  margin-left: 1px;
+}
+@keyframes caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* 換場景淡入淡出 */
+.fader {
+  transition: opacity 0.22s ease;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+.fader--in {
+  opacity: 1;
+}
+.fader--out {
+  opacity: 0;
 }
 
 /* ── 白天選單 ───────────────────────────────────────── */

@@ -253,4 +253,10 @@ describe("loadChapter 把關", () => {
     broken.endings[broken.endings.length - 1].when = { allFlags: ["fragA"] };
     expect(() => loadChapter(broken)).toThrow(/catch-all|完整性/);
   });
+
+  it("opening speaker 不在 cast → throw", () => {
+    const broken = structuredClone(rawCh01) as ChapterData;
+    broken.cast = {};
+    expect(() => loadChapter(broken)).toThrow(/完整性/);
+  });
 });

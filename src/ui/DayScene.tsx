@@ -1,6 +1,6 @@
 import type { Action, View } from "../engine/index.js";
 import { Portrait } from "./Portrait.js";
-import { DialogueBox } from "./DialogueBox.js";
+import { VNText } from "./VNText.js";
 
 type DayView = Extract<View, { phase: "day" }>;
 
@@ -14,12 +14,12 @@ export function DayScene({
   if (view.mode === "dialogue") {
     return (
       <div className="scene__body">
-        <Portrait portrait={view.portrait} />
-        <DialogueBox
+        <Portrait file={view.portrait.file} expression={view.portrait.expression} />
+        <VNText
+          text={view.line}
           speaker={view.speaker}
-          line={view.line}
-          hint={view.hasNext ? "▼ 點擊繼續" : "▼ 收下這片執念"}
-          onAdvance={() => dispatch({ type: "ADVANCE_DIALOGUE" })}
+          hint={view.hasNext ? "▼" : "▼ 收下這片執念"}
+          onComplete={() => dispatch({ type: "ADVANCE_DIALOGUE" })}
         />
       </div>
     );
@@ -28,7 +28,7 @@ export function DayScene({
   // menu
   return (
     <div className="scene__body">
-      <Portrait portrait={view.portrait} />
+      <Portrait file={view.portrait.file} expression={view.portrait.expression} />
       <div className="day-menu">
         <p className="phase-tag phase-tag--day">白天 · 溫情層</p>
         {view.interactions.map((it) => (

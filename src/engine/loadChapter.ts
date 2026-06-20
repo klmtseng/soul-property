@@ -69,6 +69,13 @@ export function assertReferentialIntegrity(chapter: ChapterData): void {
     }
   }
 
+  // 開場：有 speaker 的拍必須在 cast 內找得到立繪
+  for (const beat of chapter.opening ?? []) {
+    if (beat.speaker && !chapter.cast?.[beat.speaker]) {
+      errors.push(`opening 的 speaker「${beat.speaker}」在 cast 找不到對應立繪`);
+    }
+  }
+
   // 結局：when 條件可解析；最後一個必須是 catch-all（無 when）
   chapter.endings.forEach((e, i) => {
     checkCondition(e.when, `ending "${e.id}".when`, grantableFlags, varNames, errors);

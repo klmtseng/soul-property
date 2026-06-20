@@ -9,9 +9,11 @@ import {
 } from "../engine/index.js";
 import { backgroundUrl } from "./assets.js";
 import { Portrait } from "./Portrait.js";
-import { DialogueBox } from "./DialogueBox.js";
+import { VNText } from "./VNText.js";
+import { SceneFader } from "./SceneFader.js";
 import { DayScene } from "./DayScene.js";
 import { NightScene } from "./NightScene.js";
+import { TruthScene } from "./TruthScene.js";
 import { EndingScreen } from "./EndingScreen.js";
 
 type AppAction = Action | { type: "RESTART" };
@@ -38,53 +40,42 @@ export function App({ chapter }: { chapter: ChapterData }) {
       style={bg ? { backgroundImage: `url(${bg})` } : undefined}
     >
       <div className="stage__inner">
-        {view.phase === "opening" && (
-          <div className="scene__body opening">
-            <p className="phase-tag phase-tag--day">靈魂物業公司</p>
-            <DialogueBox
-              speaker={view.speaker ?? undefined}
-              line={view.line}
-              hint={view.hasNext ? "▼ 點擊繼續" : "▼ 推開那扇門"}
-              onAdvance={() => dispatch({ type: "ADVANCE_OPENING" })}
-            />
-          </div>
-        )}
+        <SceneFader sceneKey={view.phase}>
+          {view.phase === "opening" && (
+            <div className="scene__body opening">
+              <p className="phase-tag phase-tag--day">靈魂物業公司</p>
+              {view.portraitFile && <Portrait file={view.portraitFile} alt={view.speaker} />}
+              <VNText
+                text={view.line}
+                speaker={view.speaker ?? undefined}
+                hint={view.hasNext ? "▼" : "▼ 推開那扇門"}
+                onComplete={() => dispatch({ type: "ADVANCE_OPENING" })}
+              />
+            </div>
+          )}
 
-        {view.phase === "intro" && (
-          <div className="scene__body intro">
-            <Portrait portrait={view.portrait} />
-            <h1 className="intro__title">靈魂物業公司</h1>
-            <p className="intro__sub">第一章 ·《敲牆的人》</p>
-            <p className="intro__resident">
-              新住戶：{view.residentName}（{view.age}）
-            </p>
-            <blockquote className="intro__obsession">「{view.obsession}」</blockquote>
-            <button className="primary-btn" onClick={() => dispatch({ type: "BEGIN" })}>
-              接下這位住戶
-            </button>
-          </div>
-        )}
+          {view.phase === "intro" && (
+            <div className="scene__body intro">
+              <Portrait file={view.portrait.file} expression={view.portrait.expression} />
+              <h1 className="intro__title">靈魂物業公司</h1>
+              <p className="intro__sub">第一章 ·《敲牆的人》</p>
+              <p className="intro__resident">
+                新住戶：{view.residentName}（{view.age}）
+              </p>
+              <blockquote className="intro__obsession">「{view.obsession}」</blockquote>
+              <button className="primary-btn" onClick={() => dispatch({ type: "BEGIN" })}>
+                接下這位住戶
+              </button>
+            </div>
+          )}
 
-        {view.phase === "day" && <DayScene view={view} dispatch={dispatch} />}
-        {view.phase === "night" && <NightScene view={view} dispatch={dispatch} />}
-
-        {view.phase === "truth" && (
-          <div className="scene__body scene__body--night">
-            <Portrait portrait={view.portrait} />
-            <p className="phase-tag">真相</p>
-            <p className="truth__text">{view.text}</p>
-            <button
-              className="primary-btn"
-              onClick={() => dispatch({ type: "REVEAL_TO_ENDING" })}
-            >
-              {view.revealed ? "送她最後一程" : "面對結局"}
-            </button>
-          </div>
-        )}
-
-        {view.phase === "ending" && (
-          <EndingScreen view={view} onRestart={() => dispatch({ type: "RESTART" })} />
-        )}
+          {view.phase === "day" && <DayScene view={view} dispatch={dispatch} />}
+          {view.phase === "night" && <NightScene view={view} dispatch={dispatch} />}
+          {view.phase === "truth" && <TruthScene view={view} dispatch={dispatch} />}
+          {view.phase === "ending" && (
+            <EndingScreen view={view} onRestart={() => dispatch({ type: "RESTART" })} />
+          )}
+        </SceneFader>
       </div>
     </div>
   );

@@ -43,6 +43,10 @@
         }
       }
     },
+    "cast": {
+      "type": "object",
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    },
     "resident": {
       "type": "object",
       "additionalProperties": false,

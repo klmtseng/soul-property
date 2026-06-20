@@ -24,6 +24,7 @@ PORTRAITS_SPEC = {
     "chen_calm.png": ((120, 140, 170, 255), "陳秀英・平靜"),
     "chen_uneasy.png": ((150, 120, 110, 255), "陳秀英・不安"),
     "chen_broken.png": ((90, 60, 80, 255), "陳秀英・崩潰"),
+    "clerk_neutral.png": ((70, 78, 92, 255), "老職員"),
 }
 BACKGROUNDS_SPEC = {
     "day.png": ((230, 224, 210, 255), "白天 / 溫情層"),

@@ -29,6 +29,8 @@ export interface ChapterData {
   chapterId: string;
   /** 進入住戶卡/白天前的開場敘事（選填）。建立世界觀與玩家身分。 */
   opening?: OpeningLine[];
+  /** 配角立繪對照表：說話者名 → 立繪檔名（主住戶用 resident.portraits）。 */
+  cast?: Record<string, string>;
   resident: {
     id: string;
     name: string;
