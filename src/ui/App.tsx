@@ -28,7 +28,7 @@ export function App({ chapter }: { chapter: ChapterData }) {
   const isNightlike =
     view.phase === "night" ||
     view.phase === "truth" ||
-    (view.phase === "ending" && view.kind === "dissipate");
+    (view.phase === "ending" && (view.rank === "bad" || view.rank === "worst"));
   const bg = backgroundUrl(isNightlike ? "night.png" : "day.png");
 
   return (

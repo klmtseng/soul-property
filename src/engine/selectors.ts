@@ -1,5 +1,6 @@
-import type { Expression, GameState } from "./types.js";
+import type { EndingRank, Expression, GameState } from "./types.js";
 import { isTruthRevealed } from "./reducer.js";
+import { visibleOptions } from "./conditions.js";
 
 // 呈現層只消費這個 view-model；它不直接讀 chapter 內部結構、也不跑任何判定邏輯。
 
@@ -16,8 +17,8 @@ export type View =
       mode: "menu";
       portrait: PortraitView;
       interactions: InteractionMenuItem[];
-      fragments: string[]; // 已蒐集到的碎片描述（按蒐集順序）
-      fragmentTotal: number; // 本章線索碎片總數
+      fragments: string[];
+      fragmentTotal: number;
       canEnterNight: boolean;
     }
   | {
@@ -41,34 +42,35 @@ export type View =
   | {
       phase: "ending";
       portrait: PortraitView;
-      kind: "rest" | "dissipate";
+      rank: EndingRank;
       permanentLoss: boolean;
       text: string;
     };
 
 export interface PortraitView {
   expression: Expression;
-  /** 章節 JSON 指定的檔名（呈現層負責拼 /assets/portraits/ 路徑載入）。 */
   file: string;
 }
 
 /**
  * 立繪表情驅動規則（檢查點 review 重點）：
- *   - 白天 / 開場   → calm（溫情層，平靜為主）
- *   - 夜晚 / 真相   → 由 rage 相對 startRage、rageThreshold 推導：
- *        rage > rageThreshold        → broken（怨氣失控）
- *        rage >= startRage           → uneasy（尚未安撫，陰時不安）
- *        rage <  startRage           → calm（你的回應正在安撫她）
- *   - 結局         → rest=calm / dissipate=broken
- * 表情完全由「劇情節點 + rage 區間」決定，不在程式碼寫死任一句台詞。
+ *   - 白天 / 開場 → calm（溫情層）
+ *   - 夜晚 / 真相 → 以 rage 相對 startVars.rage 推導：
+ *        rage ≥ 基準+2 → broken；rage ≥ 基準 → uneasy；rage < 基準 → calm
+ *   - 結局 → 依 rank：best/good = calm；bad/worst = broken
+ * 表情完全由「劇情節點 + rage 區間」決定，不在程式碼寫死台詞。
  */
 export function currentExpression(state: GameState): Expression {
-  const { phase, rage, ending, chapter } = state;
-  if (ending === "rest") return "calm";
-  if (ending === "dissipate") return "broken";
+  const { phase, chapter } = state;
+  if (state.endingId) {
+    const e = chapter.endings.find((x) => x.id === state.endingId);
+    return e && (e.rank === "best" || e.rank === "good") ? "calm" : "broken";
+  }
   if (phase === "night" || phase === "truth") {
-    if (rage > chapter.night.rageThreshold) return "broken";
-    if (rage >= chapter.night.startRage) return "uneasy";
+    const rage = state.vars.rage ?? 0;
+    const base = chapter.night.startVars.rage ?? 0;
+    if (rage >= base + 2) return "broken";
+    if (rage >= base) return "uneasy";
     return "calm";
   }
   return "calm";
@@ -123,8 +125,9 @@ export function getView(state: GameState): View {
         })),
         fragments: collectedFragments,
         fragmentTotal: chapter.day.fragments.length,
-        canEnterNight:
-          state.doneInteractions.length === chapter.day.interactions.length,
+        canEnterNight: chapter.day.fragments.every((f) =>
+          state.collected.includes(f.id),
+        ),
       };
     }
 
@@ -133,13 +136,14 @@ export function getView(state: GameState): View {
         return { phase: "night", mode: "outcome", portrait, outcome: state.lastOutcome };
       }
       const choice = chapter.night.choices[state.nightChoiceIndex];
+      const opts = visibleOptions(choice, state.collected, state.vars);
       return {
         phase: "night",
         mode: "choice",
         portrait,
         rules: chapter.night.rules,
         prompt: choice.prompt,
-        options: choice.options.map((o) => ({ label: o.label })),
+        options: opts.map((o) => ({ label: o.label })),
       };
     }
 
@@ -156,15 +160,13 @@ export function getView(state: GameState): View {
     }
 
     case "ending": {
-      const kind = state.ending!;
-      const text =
-        kind === "rest" ? chapter.endings.good.text : chapter.endings.bad.text;
+      const e = chapter.endings.find((x) => x.id === state.endingId)!;
       return {
         phase: "ending",
         portrait,
-        kind,
+        rank: e.rank,
         permanentLoss: state.permanentLoss,
-        text,
+        text: e.text,
       };
     }
   }

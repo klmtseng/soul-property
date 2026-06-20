@@ -282,11 +282,16 @@ body {
   font-size: 1.5rem;
   letter-spacing: 0.2em;
 }
-.ending--rest .ending__title {
+.ending--best .ending__title,
+.ending--good .ending__title {
   color: var(--accent);
 }
-.ending--dissipate .ending__title {
+.ending--bad .ending__title,
+.ending--worst .ending__title {
   color: var(--danger);
+}
+.ending--best .ending__title {
+  text-shadow: 0 0 18px rgba(201, 162, 107, 0.55);
 }
 .ending__text {
   white-space: pre-line;

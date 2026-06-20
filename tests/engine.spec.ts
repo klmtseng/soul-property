@@ -4,120 +4,151 @@ import {
   initState,
   reduce,
   getView,
-  type Action,
+  visibleOptions,
   type ChapterData,
+  type EndingRank,
   type GameState,
 } from "../src/engine/index.js";
 import rawCh01 from "../src/data/chapters/ch01_knocking.json";
 
 const ch01 = loadChapter(rawCh01);
 
-// ── 測試輔助：把一局從頭走到結局 ────────────────────────────────────────
+// ── 路徑模擬輔助 ────────────────────────────────────────────────────────
 
-/** 白天：依序開啟並讀完每個互動，蒐齊全部碎片，然後入夜。 */
-function playDayThenEnterNight(s: GameState): GameState {
+/** 白天：依序看互動（可指定跳過 flavor 互動 id），蒐齊碎片後入夜。 */
+function playDay(s: GameState, skip: string[] = []): GameState {
   for (const it of s.chapter.day.interactions) {
+    if (skip.includes(it.id)) continue;
     s = reduce(s, { type: "OPEN_INTERACTION", id: it.id });
-    // 讀完該互動所有對話（最後一次 ADVANCE 會收下碎片並回選單）
-    for (let i = 0; i < it.dialogue.length; i++) {
-      s = reduce(s, { type: "ADVANCE_DIALOGUE" });
-    }
+    for (let i = 0; i < it.dialogue.length; i++) s = reduce(s, { type: "ADVANCE_DIALOGUE" });
   }
   return reduce(s, { type: "ENTER_NIGHT" });
 }
 
-/** 夜晚：用 label 找選項做抉擇並確認 outcome。 */
+/** 用 label 在「目前可見選項」中做抉擇並確認 outcome。 */
 function chooseByLabel(s: GameState, label: string): GameState {
   const choice = s.chapter.night.choices[s.nightChoiceIndex];
-  const idx = choice.options.findIndex((o) => o.label === label);
-  expect(idx, `找不到選項「${label}」`).toBeGreaterThanOrEqual(0);
+  const visible = visibleOptions(choice, s.collected, s.vars);
+  const idx = visible.findIndex((o) => o.label === label);
+  expect(idx, `關卡 ${choice.id} 找不到可見選項「${label}」`).toBeGreaterThanOrEqual(0);
   s = reduce(s, { type: "CHOOSE", optionIndex: idx });
-  s = reduce(s, { type: "ACK_OUTCOME" });
-  return s;
+  return reduce(s, { type: "ACK_OUTCOME" });
 }
 
-/** 走完一局：白天蒐碎片 → 兩抉擇 → 真相 → 結局。回傳終局狀態。 */
-function playChapter(knock: string, broadcast: string): GameState {
+interface Path {
+  skipDay?: string[];
+  knock: string;
+  radio: string;
+  grief: string;
+  farewell: string;
+}
+
+function play(path: Path): GameState {
   let s = initState(ch01);
   s = reduce(s, { type: "BEGIN" });
-  s = playDayThenEnterNight(s);
-  s = chooseByLabel(s, knock);
-  s = chooseByLabel(s, broadcast);
+  s = playDay(s, path.skipDay);
+  expect(s.phase).toBe("night");
+  s = chooseByLabel(s, path.knock);
+  s = chooseByLabel(s, path.radio);
+  s = chooseByLabel(s, path.grief);
+  s = chooseByLabel(s, path.farewell);
   expect(s.phase).toBe("truth");
-  s = reduce(s, { type: "REVEAL_TO_ENDING" });
-  return s;
+  return reduce(s, { type: "REVEAL_TO_ENDING" });
 }
 
-// ── 2.1 可達性表：四列逐一驗證 ──────────────────────────────────────────
+function rankOf(s: GameState): EndingRank {
+  return ch01.endings.find((e) => e.id === s.endingId)!.rank;
+}
 
-// 與 ch01 的選項 label 對齊（label 含情境字句）
-const KNOCK_RIGHT = "回敲三下，不多不少";
-const KNOCK_WRONG_COUNT = "胡亂回敲，數目沒把握";
-const KNOCK_IGNORE = "不理會，把頭埋進被子";
-const KNOCK_OPEN = "開門查看";
-const RADIO_LISTEN = "聽完，一個字都不打斷";
-const RADIO_OFF = "關掉";
+// ── 四級結局各有一條可達路徑 ────────────────────────────────────────────
 
-describe("結局可達性 (計畫 2.1 表)", () => {
-  it("第1列 全做對：回敲 + 聽完 → 安息 (rage=1)", () => {
-    const s = playChapter(KNOCK_RIGHT, RADIO_LISTEN);
-    expect(s.rage).toBe(1);
-    expect(s.ending).toBe("rest");
+describe("四級結局可達性", () => {
+  it("最好(best)：回敲+聽完+跟著哼+敲三下 → best", () => {
+    const s = play({
+      knock: "回敲三下，不多不少",
+      radio: "聽完，一個字都不打斷",
+      grief: "跟著哼，替她接上下半句",
+      farewell: "替那個敲不動的早晨，敲完最後三下",
+    });
+    expect(rankOf(s)).toBe("best");
     expect(s.permanentLoss).toBe(false);
+    expect(s.collected).toEqual(expect.arrayContaining(["learned_song", "soothed"]));
   });
 
-  it("第2列 全做錯：開門 + 關掉 → 魂飛魄散 (rage=6, 不可逆)", () => {
-    const s = playChapter(KNOCK_OPEN, RADIO_OFF);
-    expect(s.rage).toBe(6);
-    expect(s.ending).toBe("dissipate");
+  it("好(good)：兩線索齊但沒接到歌(出聲安撫) → good", () => {
+    const s = play({
+      knock: "回敲三下，不多不少",
+      radio: "聽完，一個字都不打斷",
+      grief: "出聲安撫她",
+      farewell: "沉默地陪著她",
+    });
+    expect(rankOf(s)).toBe("good");
+    expect(s.collected).not.toContain("soothed");
+  });
+
+  it("壞(bad)：關掉收音機(缺 truth_clue_radio)、未開門 → bad(不可逆)", () => {
+    const s = play({
+      knock: "回敲三下，不多不少",
+      radio: "關掉",
+      grief: "出聲安撫她",
+      farewell: "沉默地陪著她",
+    });
+    expect(rankOf(s)).toBe("bad");
     expect(s.permanentLoss).toBe(true);
+    expect(s.collected).not.toContain("door_opened");
   });
 
-  it("第3列 缺回敲：不理會 + 聽完 → 魂飛魄散 (truth_clue_knock 缺席)", () => {
-    const s = playChapter(KNOCK_IGNORE, RADIO_LISTEN);
-    expect(s.collected).not.toContain("truth_clue_knock");
-    expect(s.collected).toContain("truth_clue_radio");
-    expect(s.ending).toBe("dissipate");
+  it("最壞(worst)：開門查看 → worst(不可逆)", () => {
+    const s = play({
+      knock: "開門查看",
+      radio: "聽完，一個字都不打斷",
+      grief: "出聲安撫她",
+      farewell: "沉默地陪著她",
+    });
+    expect(rankOf(s)).toBe("worst");
+    expect(s.permanentLoss).toBe(true);
+    expect(s.collected).toContain("door_opened");
+  });
+});
+
+// ── requires 條件適配 ───────────────────────────────────────────────────
+
+describe("requires 選項過濾", () => {
+  it("沒學到歌(跳過 humming) → grief 關卡看不到「跟著哼」", () => {
+    let s = initState(ch01);
+    s = reduce(s, { type: "BEGIN" });
+    s = playDay(s, ["humming"]);
+    s = chooseByLabel(s, "回敲三下，不多不少");
+    s = chooseByLabel(s, "聽完，一個字都不打斷");
+    const grief = ch01.night.choices[s.nightChoiceIndex];
+    const labels = visibleOptions(grief, s.collected, s.vars).map((o) => o.label);
+    expect(grief.id).toBe("grief");
+    expect(labels).not.toContain("跟著哼，替她接上下半句");
   });
 
-  it("第4列 缺收音機：回敲 + 關掉 → 魂飛魄散 (truth_clue_radio 缺席)", () => {
-    const s = playChapter(KNOCK_RIGHT, RADIO_OFF);
-    expect(s.collected).toContain("truth_clue_knock");
-    expect(s.collected).not.toContain("truth_clue_radio");
-    expect(s.ending).toBe("dissipate");
-  });
-
-  it("數目錯的回敲不解鎖 truth_clue_knock → 魂飛魄散 (碎片 C 是必要推理)", () => {
-    const s = playChapter(KNOCK_WRONG_COUNT, RADIO_LISTEN);
-    expect(s.collected).not.toContain("truth_clue_knock");
-    expect(s.ending).toBe("dissipate");
+  it("學到歌 → grief 關卡看得到「跟著哼」", () => {
+    let s = initState(ch01);
+    s = reduce(s, { type: "BEGIN" });
+    s = playDay(s); // 全部互動，含 humming
+    s = chooseByLabel(s, "回敲三下，不多不少");
+    s = chooseByLabel(s, "聽完，一個字都不打斷");
+    const grief = ch01.night.choices[s.nightChoiceIndex];
+    const labels = visibleOptions(grief, s.collected, s.vars).map((o) => o.label);
+    expect(labels).toContain("跟著哼，替她接上下半句");
   });
 });
 
 // ── 機制不變式 ──────────────────────────────────────────────────────────
 
 describe("引擎機制", () => {
-  it("白天必須蒐齊全部碎片才能入夜", () => {
+  it("白天線索碎片未齊不得入夜（flavor 互動可選）", () => {
     let s = initState(ch01);
     s = reduce(s, { type: "BEGIN" });
-    // 只完成第一個互動就嘗試入夜 → 應被拒（仍停在 day）
-    const first = ch01.day.interactions[0];
-    s = reduce(s, { type: "OPEN_INTERACTION", id: first.id });
-    for (let i = 0; i < first.dialogue.length; i++) {
-      s = reduce(s, { type: "ADVANCE_DIALOGUE" });
-    }
+    const wall = ch01.day.interactions[0];
+    s = reduce(s, { type: "OPEN_INTERACTION", id: wall.id });
+    for (let i = 0; i < wall.dialogue.length; i++) s = reduce(s, { type: "ADVANCE_DIALOGUE" });
     s = reduce(s, { type: "ENTER_NIGHT" });
     expect(s.phase).toBe("day");
-  });
-
-  it("唯一安息路徑：所有抉擇組合中只有一種給好結局", () => {
-    const knocks = [KNOCK_RIGHT, KNOCK_WRONG_COUNT, KNOCK_IGNORE, KNOCK_OPEN];
-    const radios = [RADIO_LISTEN, RADIO_OFF];
-    const combos = knocks.flatMap((k) => radios.map((b): [string, string] => [k, b]));
-    const restCount = combos.filter(
-      ([k, b]) => playChapter(k, b).ending === "rest",
-    ).length;
-    expect(restCount).toBe(1);
   });
 
   it("reduce 為純函式：不修改輸入 state", () => {
@@ -127,40 +158,48 @@ describe("引擎機制", () => {
     expect(s).toEqual(snapshot);
   });
 
-  it("getView 在每個 phase 都能產出對應 view", () => {
+  it("getView 在各 phase 都能產出對應 view", () => {
     let s = initState(ch01);
     expect(getView(s).phase).toBe("intro");
     s = reduce(s, { type: "BEGIN" });
     expect(getView(s).phase).toBe("day");
-    s = playDayThenEnterNight(s);
+    s = playDay(s);
     expect(getView(s).phase).toBe("night");
   });
 });
 
-// ── 載入期把關：schema + 指涉完整性 ────────────────────────────────────
+// ── 載入期把關 ──────────────────────────────────────────────────────────
 
 describe("loadChapter 把關", () => {
-  it("ch01 通過 schema 與指涉完整性", () => {
+  it("ch01 通過 schema 與完整性", () => {
     expect(() => loadChapter(rawCh01)).not.toThrow();
   });
 
   it("schema 不合 → throw", () => {
-    const bad = { ...(rawCh01 as object), chapterId: 123 };
-    expect(() => loadChapter(bad)).toThrow(/schema/);
+    expect(() => loadChapter({ ...(rawCh01 as object), chapterId: 123 })).toThrow(/schema/);
   });
 
-  it("指涉斷鏈（revealCondition 指向不存在的旗標）→ throw", () => {
+  it("revealCondition 指向不存在旗標 → throw", () => {
     const broken = structuredClone(rawCh01) as ChapterData;
     broken.truth.revealCondition = [...broken.truth.revealCondition, "ghost_flag"];
-    expect(() => loadChapter(broken)).toThrow(/指涉完整性/);
+    expect(() => loadChapter(broken)).toThrow(/完整性/);
   });
 
-  it("指涉斷鏈（grantsFragment 指向不存在的 fragment）→ throw", () => {
+  it("effects 用未宣告的 var → throw", () => {
     const broken = structuredClone(rawCh01) as ChapterData;
-    broken.day.interactions[0].grantsFragment = "fragZ";
-    expect(() => loadChapter(broken)).toThrow(/指涉完整性/);
+    broken.night.choices[0].options[0].effects = [{ var: "nonsense", delta: 1 }];
+    expect(() => loadChapter(broken)).toThrow(/完整性/);
+  });
+
+  it("ending.when 引用無法解鎖的旗標 → throw", () => {
+    const broken = structuredClone(rawCh01) as ChapterData;
+    broken.endings[0].when = { allFlags: ["never_grantable"] };
+    expect(() => loadChapter(broken)).toThrow(/完整性/);
+  });
+
+  it("最後一個結局帶 when（非 catch-all）→ throw", () => {
+    const broken = structuredClone(rawCh01) as ChapterData;
+    broken.endings[broken.endings.length - 1].when = { allFlags: ["fragA"] };
+    expect(() => loadChapter(broken)).toThrow(/catch-all|完整性/);
   });
 });
-
-// 抑制未使用型別匯入告警（Action 用於型別檢查文件）
-export type _Action = Action;

@@ -1,6 +1,7 @@
-import type { Action, ChapterData, GameState } from "./types.js";
+import type { Action, ChapterData, Effect, GameState } from "./types.js";
+import { evalCondition, visibleOptions } from "./conditions.js";
 
-/** 從章節資料建立初始狀態。怨氣起始值來自資料層，不在程式碼寫死。 */
+/** 從章節資料建立初始狀態。數值初始值來自資料層，不在程式碼寫死。 */
 export function initState(chapter: ChapterData): GameState {
   return {
     chapter,
@@ -9,10 +10,10 @@ export function initState(chapter: ChapterData): GameState {
     activeInteractionId: null,
     dialogueCursor: 0,
     nightChoiceIndex: 0,
-    rage: chapter.night.startRage,
+    vars: { ...chapter.night.startVars },
     lastOutcome: null,
     collected: [],
-    ending: null,
+    endingId: null,
     permanentLoss: false,
   };
 }
@@ -21,6 +22,12 @@ export function initState(chapter: ChapterData): GameState {
 export function isTruthRevealed(state: GameState): boolean {
   const have = new Set(state.collected);
   return state.chapter.truth.revealCondition.every((id) => have.has(id));
+}
+
+/** 白天線索碎片是否全數蒐齊（入夜門檻；flavor 互動不在此列，為可選）。 */
+export function allFragmentsCollected(state: GameState): boolean {
+  const have = new Set(state.collected);
+  return state.chapter.day.fragments.every((f) => have.has(f.id));
 }
 
 /** 純函式狀態機。相同 (state, action) 永遠得到相同結果；不碰 DOM、不做 I/O。 */
@@ -45,17 +52,17 @@ export function reduce(state: GameState, action: Action): GameState {
       const it = chapter.day.interactions.find(
         (i) => i.id === state.activeInteractionId,
       )!;
-      // 還有下一句：推進游標。
       if (state.dialogueCursor < it.dialogue.length - 1) {
         return { ...state, dialogueCursor: state.dialogueCursor + 1 };
       }
-      // 對話讀完：若此互動給線索則收下碎片旗標，回到互動選單。
+      // 對話讀完：授予碎片/旗標，回到互動選單。
+      let collected = state.collected;
+      if (it.grantsFragment) collected = addFlag(collected, it.grantsFragment);
+      if (it.grantsFlag) collected = addFlag(collected, it.grantsFlag);
       return {
         ...state,
         doneInteractions: [...state.doneInteractions, it.id],
-        collected: it.grantsFragment
-          ? addFlag(state.collected, it.grantsFragment)
-          : state.collected,
+        collected,
         activeInteractionId: null,
         dialogueCursor: 0,
       };
@@ -63,21 +70,20 @@ export function reduce(state: GameState, action: Action): GameState {
 
     case "ENTER_NIGHT": {
       if (state.phase !== "day") return state;
-      // 必須蒐齊全部白天碎片才入夜。
-      if (state.doneInteractions.length < chapter.day.interactions.length) {
-        return state;
-      }
+      if (!allFragmentsCollected(state)) return state; // 線索碎片未齊不得入夜
       return { ...state, phase: "night", nightChoiceIndex: 0, lastOutcome: null };
     }
 
     case "CHOOSE": {
       if (state.phase !== "night" || state.lastOutcome) return state;
       const choice = chapter.night.choices[state.nightChoiceIndex];
-      const opt = choice?.options[action.optionIndex];
+      if (!choice) return state;
+      const opts = visibleOptions(choice, state.collected, state.vars);
+      const opt = opts[action.optionIndex];
       if (!opt) return state;
       return {
         ...state,
-        rage: state.rage + opt.rageDelta,
+        vars: applyEffects(state.vars, opt.effects),
         collected: opt.unlocks ? addFlag(state.collected, opt.unlocks) : state.collected,
         lastOutcome: opt.outcome,
       };
@@ -97,13 +103,15 @@ export function reduce(state: GameState, action: Action): GameState {
 
     case "REVEAL_TO_ENDING": {
       if (state.phase !== "truth") return state;
-      const revealed = isTruthRevealed(state);
-      const good = revealed && state.rage <= chapter.night.rageThreshold;
+      const flags = new Set(state.collected);
+      const chosen =
+        chapter.endings.find((e) => evalCondition(e.when, flags, state.vars)) ??
+        chapter.endings[chapter.endings.length - 1];
       return {
         ...state,
         phase: "ending",
-        ending: good ? "rest" : "dissipate",
-        permanentLoss: good ? false : chapter.endings.bad.permanentLoss,
+        endingId: chosen.id,
+        permanentLoss: chosen.permanentLoss ?? false,
       };
     }
 
@@ -114,4 +122,14 @@ export function reduce(state: GameState, action: Action): GameState {
 
 function addFlag(collected: string[], flag: string): string[] {
   return collected.includes(flag) ? collected : [...collected, flag];
+}
+
+function applyEffects(
+  vars: Record<string, number>,
+  effects: Effect[] | undefined,
+): Record<string, number> {
+  if (!effects || effects.length === 0) return vars;
+  const next = { ...vars };
+  for (const e of effects) next[e.var] = (next[e.var] ?? 0) + e.delta;
+  return next;
 }

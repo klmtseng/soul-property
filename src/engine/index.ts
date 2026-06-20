@@ -2,12 +2,21 @@
 export type {
   Action,
   ChapterData,
+  Condition,
+  Effect,
+  Ending,
+  EndingRank,
   Expression,
   GameState,
   Phase,
-  EndingKind,
 } from "./types.js";
 export { loadChapter, assertReferentialIntegrity } from "./loadChapter.js";
-export { initState, reduce, isTruthRevealed } from "./reducer.js";
+export {
+  initState,
+  reduce,
+  isTruthRevealed,
+  allFragmentsCollected,
+} from "./reducer.js";
+export { evalCondition, visibleOptions } from "./conditions.js";
 export { getView, currentExpression } from "./selectors.js";
 export type { View, PortraitView, InteractionMenuItem } from "./selectors.js";

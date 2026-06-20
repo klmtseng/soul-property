@@ -1,7 +1,22 @@
 // ── 資料層型別 (與 schema/chapter.schema.json 對齊) ──────────────────────
-// 引擎只認這些型別；任何台詞、守則、數值都來自外部章節 JSON，不在程式碼寫死。
+// 引擎只認這些型別；任何台詞、守則、數值、條件都來自外部章節 JSON，不在程式碼寫死。
 
 export type Expression = "calm" | "uneasy" | "broken";
+
+/** 結構化條件（純資料，引擎判斷，不用 eval）。省略視為恆真。 */
+export interface Condition {
+  allFlags?: string[]; // 全部旗標都要有
+  anyFlags?: string[]; // 至少一個旗標
+  notFlags?: string[]; // 全部旗標都不能有
+  minVars?: Record<string, number>; // 各數值 >= 門檻
+  maxVars?: Record<string, number>; // 各數值 <= 門檻
+}
+
+/** 選項對數值的影響。 */
+export interface Effect {
+  var: string;
+  delta: number;
+}
 
 export interface ChapterData {
   schemaVersion: number;
@@ -18,31 +33,38 @@ export interface ChapterData {
     fragments: Fragment[];
   };
   night: {
-    startRage: number;
-    rageThreshold: number;
+    /** 各數值初始值（含 rage 等）。 */
+    startVars: Record<string, number>;
     rules: string[];
     choices: NightChoice[];
   };
   truth: {
-    /** 需全部集齊的旗標 id（可來自白天 fragment 或夜晚 option.unlocks）才揭露真相。 */
+    /** 需全部集齊的旗標 id（可來自白天 fragment/flag 或夜晚 option.unlocks）才揭露真相。 */
     revealCondition: string[];
     text: string;
   };
-  endings: {
-    good: { id: string; text: string };
-    bad: { id: string; permanentLoss: boolean; text: string };
-  };
+  /** 分級結局：引擎依序取第一個 when 成立者；最後一個必須無 when（catch-all）。 */
+  endings: Ending[];
+}
+
+export type EndingRank = "best" | "good" | "bad" | "worst";
+
+export interface Ending {
+  id: string;
+  rank: EndingRank;
+  text: string;
+  permanentLoss?: boolean;
+  when?: Condition; // 省略 = catch-all
 }
 
 export interface DayInteraction {
   id: string;
   trigger: string;
   dialogue: string[];
-  /**
-   * 完成此互動時授予的 fragment id（同時寫入 collected 旗標集）。
-   * 可省略 —— 省略時為「純角色塑造」互動，不給線索、只加血肉。
-   */
+  /** 完成時授予的 fragment id（線索碎片，計入 X/N，且為入夜門檻）。 */
   grantsFragment?: string;
+  /** 完成時授予的一般旗標（純角色支線可給可選旗標，如 learned_song）。 */
+  grantsFlag?: string;
 }
 
 export interface Fragment {
@@ -58,9 +80,12 @@ export interface NightChoice {
 
 export interface NightOption {
   label: string;
-  rageDelta: number;
-  /** 做出此選項時解鎖的真相線索旗標 id（寫入 collected 旗標集）。 */
+  /** 對數值的影響（怨氣/理解/連繫…）。 */
+  effects?: Effect[];
+  /** 做出此選項時解鎖的旗標 id。 */
   unlocks?: string;
+  /** 只有滿足此條件，選項才會出現（後面關卡可依前面抉擇適配）。 */
+  requires?: Condition;
   scare?: boolean;
   outcome: string;
 }
@@ -68,41 +93,36 @@ export interface NightOption {
 // ── 引擎狀態 ──────────────────────────────────────────────────────────────
 
 export type Phase = "intro" | "day" | "night" | "truth" | "ending";
-export type EndingKind = "rest" | "dissipate";
 
 export interface GameState {
   chapter: ChapterData;
   phase: Phase;
 
   // 白天
-  /** 已完成的互動 id。 */
   doneInteractions: string[];
-  /** 目前展開中的互動（null = 在選互動的選單）。 */
   activeInteractionId: string | null;
-  /** 展開互動時的對話游標。 */
   dialogueCursor: number;
 
   // 夜晚
-  /** 目前進行到第幾個夜晚抉擇。 */
   nightChoiceIndex: number;
-  rage: number;
-  /** 上一個抉擇選完後要顯示的 outcome（null = 尚未選或已讀過）。 */
+  /** 各數值現值（含 rage）。 */
+  vars: Record<string, number>;
   lastOutcome: string | null;
 
-  // 跨層收集的旗標（fragment id + unlocks id 共用同一個集合）
+  // 跨層收集的旗標（fragment id + flag + unlocks id 共用同一集合）
   collected: string[];
 
   // 結局
-  ending: EndingKind | null;
+  endingId: string | null;
   permanentLoss: boolean;
 }
 
 // ── Actions（呈現層唯一能對引擎做的事）──────────────────────────────────
 export type Action =
-  | { type: "BEGIN" } // intro -> day
+  | { type: "BEGIN" }
   | { type: "OPEN_INTERACTION"; id: string }
-  | { type: "ADVANCE_DIALOGUE" } // 推進對話 / 對話讀完則收下碎片並回到選單
-  | { type: "ENTER_NIGHT" } // day -> night（需三碎片到齊）
-  | { type: "CHOOSE"; optionIndex: number } // 做夜晚抉擇
-  | { type: "ACK_OUTCOME" } // 讀完 outcome，進下一抉擇 / 進真相
-  | { type: "REVEAL_TO_ENDING" }; // truth -> ending（結算）
+  | { type: "ADVANCE_DIALOGUE" }
+  | { type: "ENTER_NIGHT" }
+  | { type: "CHOOSE"; optionIndex: number } // optionIndex 對「可見選項」而言
+  | { type: "ACK_OUTCOME" }
+  | { type: "REVEAL_TO_ENDING" };
