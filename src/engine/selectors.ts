@@ -4,29 +4,13 @@ import { visibleOptions } from "./conditions.js";
 
 // 呈現層只消費這個 view-model；它不直接讀 chapter 內部結構、也不跑任何判定邏輯。
 
-export interface InteractionMenuItem {
-  id: string;
-  trigger: string;
-  done: boolean;
-}
-
 export type View =
   | { phase: "opening"; speaker?: string; line: string; hasNext: boolean; portraitFile?: string }
   | { phase: "intro"; residentName: string; age: number; obsession: string; portrait: PortraitView }
   | {
       phase: "day";
-      mode: "menu";
       portrait: PortraitView;
-      interactions: InteractionMenuItem[];
-      fragments: string[];
-      fragmentTotal: number;
-      canEnterNight: boolean;
-    }
-  | {
-      phase: "day";
-      mode: "dialogue";
-      portrait: PortraitView;
-      speaker: string;
+      speaker?: string; // 無 speaker = 情境敘述
       line: string;
       hasNext: boolean;
     }
@@ -109,38 +93,21 @@ export function getView(state: GameState): View {
       };
 
     case "day": {
-      if (state.activeInteractionId) {
-        const it = chapter.day.interactions.find(
-          (i) => i.id === state.activeInteractionId,
-        )!;
-        return {
-          phase: "day",
-          mode: "dialogue",
-          portrait,
-          speaker: chapter.resident.name,
-          line: it.dialogue[state.dialogueCursor],
-          hasNext: state.dialogueCursor < it.dialogue.length - 1,
-        };
-      }
-      const fragmentText = (id: string) =>
-        chapter.day.fragments.find((f) => f.id === id)?.text ?? "";
-      const collectedFragments = state.collected
-        .filter((id) => chapter.day.fragments.some((f) => f.id === id))
-        .map(fragmentText);
+      const interactions = chapter.day.interactions;
+      const idx = interactions.findIndex((i) => i.id === state.activeInteractionId);
+      const it = interactions[idx] ?? interactions[0];
+      // 行序列：cursor 0 = 情境敘述(trigger)；其後 = 她的對話
+      const isNarration = state.dialogueCursor === 0;
+      const line = isNarration ? it.trigger : it.dialogue[state.dialogueCursor - 1];
+      const lineCount = 1 + it.dialogue.length;
+      const moreInThis = state.dialogueCursor < lineCount - 1;
+      const moreInteractions = idx < interactions.length - 1;
       return {
         phase: "day",
-        mode: "menu",
         portrait,
-        interactions: chapter.day.interactions.map((i) => ({
-          id: i.id,
-          trigger: i.trigger,
-          done: state.doneInteractions.includes(i.id),
-        })),
-        fragments: collectedFragments,
-        fragmentTotal: chapter.day.fragments.length,
-        canEnterNight: chapter.day.fragments.every((f) =>
-          state.collected.includes(f.id),
-        ),
+        speaker: isNarration ? undefined : chapter.resident.name,
+        line,
+        hasNext: moreInThis || moreInteractions,
       };
     }
 

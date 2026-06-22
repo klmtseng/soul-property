@@ -134,9 +134,7 @@ export interface GameState {
 export type Action =
   | { type: "ADVANCE_OPENING" }
   | { type: "BEGIN" }
-  | { type: "OPEN_INTERACTION"; id: string }
-  | { type: "ADVANCE_DIALOGUE" }
-  | { type: "ENTER_NIGHT" }
+  | { type: "ADVANCE_DIALOGUE" } // 白天線性推進（自動接下一個互動 / 全部讀完入夜）
   | { type: "CHOOSE"; optionIndex: number } // optionIndex 對「可見選項」而言
   | { type: "ACK_OUTCOME" }
   | { type: "REVEAL_TO_ENDING" };

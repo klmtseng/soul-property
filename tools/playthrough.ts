@@ -24,8 +24,9 @@ function render(s: GameState): string {
     case "intro":
       return `${expr(s)} 〔開場〕${v.residentName}（${v.age}）「${v.obsession}」`;
     case "day":
-      if (v.mode === "dialogue") return `${expr(s)} 〔白天〕${v.speaker}:「${v.line}」`;
-      return `${expr(s)} 〔白天·選單〕碎片 ${v.fragments.length}/${v.fragmentTotal}${v.canEnterNight ? "（可入夜）" : ""}`;
+      return v.speaker
+        ? `${expr(s)} 〔白天〕${v.speaker}:「${v.line}」`
+        : `${expr(s)} 〔白天·敘述〕${v.line}`;
     case "night":
       if (v.mode === "outcome") return `${expr(s)} 〔夜晚·結果〕${v.outcome}`;
       return `${expr(s)} 〔夜晚·抉擇〕${v.prompt}\n      可選:${v.options.map((o) => o.label).join(" / ")}`;
@@ -36,15 +37,11 @@ function render(s: GameState): string {
   }
 }
 
-function playDay(s: GameState, skip: string[] = []): GameState {
-  for (const it of ch.day.interactions) {
-    if (skip.includes(it.id)) continue;
-    s = reduce(s, { type: "OPEN_INTERACTION", id: it.id });
-    console.log(`  · ${it.trigger}`);
-    for (let i = 0; i < it.dialogue.length; i++) {
-      s = reduce(s, { type: "ADVANCE_DIALOGUE" });
-      if (s.activeInteractionId) console.log("    " + render(s));
-    }
+function playDay(s: GameState): GameState {
+  // 白天線性：一路推進，逐行印出，直到自動入夜。
+  while (s.phase === "day") {
+    console.log("  " + render(s));
+    s = reduce(s, { type: "ADVANCE_DIALOGUE" });
   }
   return s;
 }
@@ -69,11 +66,10 @@ function playPath(title: string, skip: string[], picks: string[]) {
   }
   console.log(render(s));
   s = reduce(s, { type: "BEGIN" });
-  console.log("\n── 白天 ──");
-  s = playDay(s, skip);
+  console.log("\n── 白天（線性）──");
+  s = playDay(s); // 自動入夜
   console.log("\n── 夜晚 ──");
   ch.night.rules.forEach((r, i) => console.log(`  守則${i + 1}. ${r}`));
-  s = reduce(s, { type: "ENTER_NIGHT" });
   for (const p of picks) s = choose(s, p);
   console.log("\n── 真相 ──\n  " + render(s).replace(/\n/g, "\n  "));
   console.log(`  vars=${JSON.stringify(s.vars)}`);

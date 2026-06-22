@@ -20,4 +20,4 @@ export {
 } from "./reducer.js";
 export { evalCondition, visibleOptions } from "./conditions.js";
 export { getView, currentExpression } from "./selectors.js";
-export type { View, PortraitView, InteractionMenuItem } from "./selectors.js";
+export type { View, PortraitView } from "./selectors.js";

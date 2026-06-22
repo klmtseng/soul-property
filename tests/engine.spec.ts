@@ -15,14 +15,14 @@ const ch01 = loadChapter(rawCh01);
 
 // ── 路徑模擬輔助 ────────────────────────────────────────────────────────
 
-/** 白天：依序看互動（可指定跳過 flavor 互動 id），蒐齊碎片後入夜。 */
-function playDay(s: GameState, skip: string[] = []): GameState {
-  for (const it of s.chapter.day.interactions) {
-    if (skip.includes(it.id)) continue;
-    s = reduce(s, { type: "OPEN_INTERACTION", id: it.id });
-    for (let i = 0; i < it.dialogue.length; i++) s = reduce(s, { type: "ADVANCE_DIALOGUE" });
+/** 白天為線性 VN：一路推進到自動入夜。 */
+function playDay(s: GameState): GameState {
+  let guard = 0;
+  while (s.phase === "day") {
+    s = reduce(s, { type: "ADVANCE_DIALOGUE" });
+    if (++guard > 1000) throw new Error("白天推進未收斂");
   }
-  return reduce(s, { type: "ENTER_NIGHT" });
+  return s;
 }
 
 /** 用 label 在「目前可見選項」中做抉擇並確認 outcome。 */
@@ -42,7 +42,6 @@ function enterDay(s: GameState): GameState {
 }
 
 interface Path {
-  skipDay?: string[];
   knock: string;
   radio: string;
   grief: string;
@@ -53,7 +52,7 @@ interface Path {
 function play(path: Path): GameState {
   let s = initState(ch01);
   s = enterDay(s);
-  s = playDay(s, path.skipDay);
+  s = playDay(s);
   expect(s.phase).toBe("night");
   s = chooseByLabel(s, path.knock);
   s = chooseByLabel(s, path.radio);
@@ -131,16 +130,14 @@ describe("四級結局可達性", () => {
 // ── requires 條件適配 ───────────────────────────────────────────────────
 
 describe("requires 選項過濾", () => {
-  it("沒學到歌(跳過 humming) → grief 關卡看不到「跟著哼」", () => {
+  it("線性白天讀完會蒐齊所有碎片與可選旗標", () => {
     let s = initState(ch01);
     s = enterDay(s);
-    s = playDay(s, ["humming"]);
-    s = chooseByLabel(s, "回敲，試著回應她");
-    s = chooseByLabel(s, "聽完，一個字都不打斷");
-    const grief = ch01.night.choices[s.nightChoiceIndex];
-    const labels = visibleOptions(grief, s.collected, s.vars).map((o) => o.label);
-    expect(grief.id).toBe("grief");
-    expect(labels).not.toContain("跟著哼，替她接上下半句");
+    s = playDay(s);
+    expect(s.phase).toBe("night");
+    for (const f of ch01.day.fragments) expect(s.collected).toContain(f.id);
+    expect(s.collected).toContain("learned_song");
+    expect(s.collected).toContain("took_candy");
   });
 
   it("學到歌 → grief 關卡看得到「跟著哼」", () => {
@@ -187,14 +184,14 @@ describe("requires 選項過濾", () => {
 // ── 機制不變式 ──────────────────────────────────────────────────────────
 
 describe("引擎機制", () => {
-  it("白天線索碎片未齊不得入夜（flavor 互動可選）", () => {
+  it("白天線性推進，讀完所有互動後自動入夜", () => {
     let s = initState(ch01);
     s = enterDay(s);
-    const wall = ch01.day.interactions[0];
-    s = reduce(s, { type: "OPEN_INTERACTION", id: wall.id });
-    for (let i = 0; i < wall.dialogue.length; i++) s = reduce(s, { type: "ADVANCE_DIALOGUE" });
-    s = reduce(s, { type: "ENTER_NIGHT" });
     expect(s.phase).toBe("day");
+    // 第一拍是情境敘述（無 speaker），第二拍才是她開口
+    expect(getView(s).phase).toBe("day");
+    s = playDay(s);
+    expect(s.phase).toBe("night");
   });
 
   it("reduce 為純函式：不修改輸入 state", () => {

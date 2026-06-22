@@ -18,17 +18,12 @@ const p = (s = "") => out.push(s);
 const count = (s: string) =>
   (s.replace(/\s/g, "").match(/[㐀-鿿豈-﫿A-Za-z0-9]/g) ?? []).length;
 
-// 模擬一條路徑（白天可跳過 flavor），回傳終局
-function sim(skip: string[], picks: string[]): GameState {
+// 模擬一條路徑，回傳終局（白天為線性，自動入夜）
+function sim(picks: string[]): GameState {
   let s = initState(ch);
   while (s.phase === "opening") s = reduce(s, { type: "ADVANCE_OPENING" });
   s = reduce(s, { type: "BEGIN" });
-  for (const it of ch.day.interactions) {
-    if (skip.includes(it.id)) continue;
-    s = reduce(s, { type: "OPEN_INTERACTION", id: it.id });
-    for (let i = 0; i < it.dialogue.length; i++) s = reduce(s, { type: "ADVANCE_DIALOGUE" });
-  }
-  s = reduce(s, { type: "ENTER_NIGHT" });
+  while (s.phase === "day") s = reduce(s, { type: "ADVANCE_DIALOGUE" });
   for (const label of picks) {
     const c = ch.night.choices[s.nightChoiceIndex];
     const idx = visibleOptions(c, s.collected, s.vars).findIndex((o) => o.label === label);
@@ -47,17 +42,17 @@ p(`\n## 一、劇情樹狀圖\n`);
 p("```");
 p("【開場】接下住戶");
 p("   │");
-p(`【白天 · 溫情層】${ch.day.interactions.length} 個互動`);
+p(`【白天 · 溫情層】${ch.day.interactions.length} 個互動，線性逐句播放（無選單，看完自動入夜）`);
 ch.day.interactions.forEach((it, i) => {
   const last = i === ch.day.interactions.length - 1;
   const tag = it.grantsFragment
-    ? `🧩 碎片 ${it.grantsFragment}（必做）`
+    ? `🧩 碎片 ${it.grantsFragment}`
     : it.grantsFlag
-      ? `💬 旗標 ${it.grantsFlag}（可選）`
+      ? `💬 旗標 ${it.grantsFlag}`
       : "💬 純細節";
   p(`   ${last ? "└" : "├"}─ ${it.id.padEnd(8)} [${tag}]`);
 });
-p("   │   入夜門檻 = 蒐齊 3 片線索碎片（flavor 互動可選，蒐越全結局越好）");
+p("   │   （線性播放，全部碎片與旗標都會蒐齊）");
 p("   ▼");
 p(`【夜晚 · 恐怖層】守則 ${ch.night.rules.length} 條 → ${ch.night.choices.length} 個循序抉擇層`);
 ch.night.choices.forEach((c, ci) => {
@@ -96,7 +91,7 @@ const paths: { name: string; skip: string[]; picks: string[] }[] = [
 p(`| 代表路徑 | vars | 結局 rank |`);
 p(`|---|---|:--:|`);
 for (const path of paths) {
-  const s = sim(path.skip, path.picks);
+  const s = sim(path.picks);
   const e = ch.endings.find((x) => x.id === s.endingId)!;
   p(`| ${path.name} | ${JSON.stringify(s.vars)} | **${e.rank}** |`);
 }

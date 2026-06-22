@@ -47,41 +47,52 @@ export function reduce(state: GameState, action: Action): GameState {
 
     case "BEGIN": {
       if (state.phase !== "intro") return state;
-      return { ...state, phase: "day" };
-    }
-
-    case "OPEN_INTERACTION": {
-      if (state.phase !== "day" || state.activeInteractionId) return state;
-      const it = chapter.day.interactions.find((i) => i.id === action.id);
-      if (!it || state.doneInteractions.includes(it.id)) return state;
-      return { ...state, activeInteractionId: it.id, dialogueCursor: 0 };
-    }
-
-    case "ADVANCE_DIALOGUE": {
-      if (state.phase !== "day" || !state.activeInteractionId) return state;
-      const it = chapter.day.interactions.find(
-        (i) => i.id === state.activeInteractionId,
-      )!;
-      if (state.dialogueCursor < it.dialogue.length - 1) {
-        return { ...state, dialogueCursor: state.dialogueCursor + 1 };
-      }
-      // 對話讀完：授予碎片/旗標，回到互動選單。
-      let collected = state.collected;
-      if (it.grantsFragment) collected = addFlag(collected, it.grantsFragment);
-      if (it.grantsFlag) collected = addFlag(collected, it.grantsFlag);
+      // 白天為線性 VN：直接開場第一個互動。
+      const first = chapter.day.interactions[0];
       return {
         ...state,
-        doneInteractions: [...state.doneInteractions, it.id],
-        collected,
-        activeInteractionId: null,
+        phase: "day",
+        activeInteractionId: first ? first.id : null,
         dialogueCursor: 0,
       };
     }
 
-    case "ENTER_NIGHT": {
-      if (state.phase !== "day") return state;
-      if (!allFragmentsCollected(state)) return state; // 線索碎片未齊不得入夜
-      return { ...state, phase: "night", nightChoiceIndex: 0, lastOutcome: null };
+    case "ADVANCE_DIALOGUE": {
+      if (state.phase !== "day" || !state.activeInteractionId) return state;
+      const interactions = chapter.day.interactions;
+      const idx = interactions.findIndex((i) => i.id === state.activeInteractionId);
+      const it = interactions[idx];
+      // 每個互動的行序列 = [情境敘述(trigger)] + [她的對話...]
+      const lineCount = 1 + it.dialogue.length;
+      if (state.dialogueCursor < lineCount - 1) {
+        return { ...state, dialogueCursor: state.dialogueCursor + 1 };
+      }
+      // 此互動讀完：授予碎片/旗標。
+      let collected = state.collected;
+      if (it.grantsFragment) collected = addFlag(collected, it.grantsFragment);
+      if (it.grantsFlag) collected = addFlag(collected, it.grantsFlag);
+      const done = [...state.doneInteractions, it.id];
+      const next = interactions[idx + 1];
+      if (next) {
+        // 自動接下一個互動。
+        return {
+          ...state,
+          collected,
+          doneInteractions: done,
+          activeInteractionId: next.id,
+          dialogueCursor: 0,
+        };
+      }
+      // 全部互動讀完 → 入夜。
+      return {
+        ...state,
+        collected,
+        doneInteractions: done,
+        activeInteractionId: null,
+        phase: "night",
+        nightChoiceIndex: 0,
+        lastOutcome: null,
+      };
     }
 
     case "CHOOSE": {
