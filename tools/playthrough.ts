@@ -59,7 +59,7 @@ function choose(s: GameState, label: string): GameState {
   return reduce(s, { type: "ACK_OUTCOME" });
 }
 
-function playPath(title: string, skip: string[], picks: [string, string, string, string]) {
+function playPath(title: string, skip: string[], picks: string[]) {
   console.log(`\n${"═".repeat(64)}\n${title}\n${"═".repeat(64)}`);
   let s = initState(ch);
   console.log("\n── 開場〈交接〉──");
@@ -81,15 +81,17 @@ function playPath(title: string, skip: string[], picks: [string, string, string,
   console.log("\n── 結局 ──\n  " + render(s).replace(/\n/g, "\n  "));
 }
 
-playPath("最好結局 —— 回應 + 接住歌 + 最後想通三下", [], [
+playPath("最好結局 —— 回應 + 接住歌 + 替他帶話 + 想通三下", [], [
   "回敲，試著回應她",
   "聽完，一個字都不打斷",
   "跟著哼，替她接上下半句",
+  "「我會替他，把話帶到。」",
   "替那個敲不動的早晨，敲完最後三下",
 ]);
 playPath("最壞結局 —— 開門撞見", [], [
   "開門查看",
   "聽完，一個字都不打斷",
   "後退，離牆遠一點",
+  "「我不是他。」（糾正她）",
   "催她，天亮了，該走了",
 ]);

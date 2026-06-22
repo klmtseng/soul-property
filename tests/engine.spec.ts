@@ -46,6 +46,7 @@ interface Path {
   knock: string;
   radio: string;
   grief: string;
+  identity: string;
   farewell: string;
 }
 
@@ -57,6 +58,7 @@ function play(path: Path): GameState {
   s = chooseByLabel(s, path.knock);
   s = chooseByLabel(s, path.radio);
   s = chooseByLabel(s, path.grief);
+  s = chooseByLabel(s, path.identity);
   s = chooseByLabel(s, path.farewell);
   expect(s.phase).toBe("truth");
   return reduce(s, { type: "REVEAL_TO_ENDING" });
@@ -69,28 +71,32 @@ function rankOf(s: GameState): EndingRank {
 // ── 四級結局各有一條可達路徑 ────────────────────────────────────────────
 
 describe("四級結局可達性", () => {
-  it("最好(best)：回敲+聽完+跟著哼+敲三下 → best", () => {
+  it("最好(best)：回應+聽完+跟著哼+替他帶話+敲三下 → best", () => {
     const s = play({
       knock: "回敲，試著回應她",
       radio: "聽完，一個字都不打斷",
       grief: "跟著哼，替她接上下半句",
+      identity: "「我會替他，把話帶到。」",
       farewell: "替那個敲不動的早晨，敲完最後三下",
     });
     expect(rankOf(s)).toBe("best");
     expect(s.permanentLoss).toBe(false);
-    expect(s.collected).toEqual(expect.arrayContaining(["learned_song", "soothed"]));
+    expect(s.collected).toEqual(
+      expect.arrayContaining(["learned_song", "soothed", "bridged"]),
+    );
   });
 
-  it("好(good)：回應+聽完+敲三下，但沒接到歌(出聲安撫) → good", () => {
+  it("好(good)：接到了歌，但身分那關沒替他帶話(缺 bridged) → good 而非 best", () => {
     const s = play({
       knock: "回敲，試著回應她",
       radio: "聽完，一個字都不打斷",
-      grief: "出聲安撫她",
+      grief: "跟著哼，替她接上下半句",
+      identity: "「是我。我回來了。」（順著她）",
       farewell: "替那個敲不動的早晨，敲完最後三下",
     });
     expect(rankOf(s)).toBe("good");
-    expect(s.collected).toContain("truth_clue_knock");
-    expect(s.collected).not.toContain("soothed");
+    expect(s.collected).toContain("soothed");
+    expect(s.collected).not.toContain("bridged");
   });
 
   it("壞(bad)：回應了也敲了三下，但關掉收音機(缺 truth_clue_radio) → bad(不可逆)", () => {
@@ -98,6 +104,7 @@ describe("四級結局可達性", () => {
       knock: "回敲，試著回應她",
       radio: "關掉",
       grief: "出聲安撫她",
+      identity: "沉默，不忍心回答",
       farewell: "替那個敲不動的早晨，敲完最後三下",
     });
     expect(rankOf(s)).toBe("bad");
@@ -112,6 +119,7 @@ describe("四級結局可達性", () => {
       knock: "開門查看",
       radio: "聽完，一個字都不打斷",
       grief: "出聲安撫她",
+      identity: "沉默，不忍心回答",
       farewell: "沉默地陪著她",
     });
     expect(rankOf(s)).toBe("worst");
@@ -153,6 +161,7 @@ describe("requires 選項過濾", () => {
     s = chooseByLabel(s, "不理會，把頭埋進被子");
     s = chooseByLabel(s, "聽完，一個字都不打斷");
     s = chooseByLabel(s, "出聲安撫她");
+    s = chooseByLabel(s, "沉默，不忍心回答");
     const farewell = ch01.night.choices[s.nightChoiceIndex];
     const labels = visibleOptions(farewell, s.collected, s.vars).map((o) => o.label);
     expect(farewell.id).toBe("farewell");
@@ -167,6 +176,7 @@ describe("requires 選項過濾", () => {
     s = chooseByLabel(s, "回敲，試著回應她");
     s = chooseByLabel(s, "聽完，一個字都不打斷");
     s = chooseByLabel(s, "出聲安撫她");
+    s = chooseByLabel(s, "沉默，不忍心回答");
     const farewell = ch01.night.choices[s.nightChoiceIndex];
     const labels = visibleOptions(farewell, s.collected, s.vars).map((o) => o.label);
     expect(s.collected).toContain("answered");
