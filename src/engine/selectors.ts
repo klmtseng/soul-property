@@ -39,11 +39,12 @@ export interface PortraitView {
 
 /**
  * 立繪表情驅動規則（檢查點 review 重點）：
- *   - 白天 / 開場 → calm（溫情層）
- *   - 夜晚 / 真相 → 以 rage 相對 startVars.rage 推導：
- *        rage ≥ 基準+2 → broken；rage ≥ 基準 → uneasy；rage < 基準 → calm
+ *   立繪表情「節點優先、rage 後備」（修正 N1：避免溫情高潮配崩壞臉）：
  *   - 結局 → 依 rank：best/good = calm；bad/worst = broken
- * 表情完全由「劇情節點 + rage 區間」決定，不在程式碼寫死台詞。
+ *   - 真相 → 依 revealed：揭露=calm(釋然) / 未揭露=uneasy（不看 rage）
+ *   - 夜晚 outcome → 觸發選項的 expression（無則依 rage）
+ *   - 夜晚 抉擇中 → 該關卡 mood（無則依 rage）
+ *   - 白天 / 開場 → calm
  */
 export function currentExpression(state: GameState): Expression {
   const { phase, chapter } = state;
@@ -51,7 +52,18 @@ export function currentExpression(state: GameState): Expression {
     const e = chapter.endings.find((x) => x.id === state.endingId);
     return e && (e.rank === "best" || e.rank === "good") ? "calm" : "broken";
   }
-  if (phase === "night" || phase === "truth") {
+  if (phase === "truth") {
+    return isTruthRevealed(state) ? "calm" : "uneasy";
+  }
+  if (phase === "night") {
+    const choice = chapter.night.choices[state.nightChoiceIndex];
+    if (state.lastOutcome) {
+      // outcome 拍：用觸發選項的 expression（找出 outcome 對應的選項）
+      const opt = choice?.options.find((o) => o.outcome === state.lastOutcome);
+      if (opt?.expression) return opt.expression;
+    } else if (choice?.mood) {
+      return choice.mood;
+    }
     const rage = state.vars.rage ?? 0;
     const base = chapter.night.startVars.rage ?? 0;
     if (rage >= base + 2) return "broken";
@@ -93,6 +105,17 @@ export function getView(state: GameState): View {
       };
 
     case "day": {
+      // 黃昏過場：互動全讀完、activeInteractionId 為 null。
+      if (!state.activeInteractionId) {
+        const dusk = chapter.day.dusk ?? [];
+        return {
+          phase: "day",
+          portrait,
+          speaker: undefined,
+          line: dusk[state.duskCursor] ?? "",
+          hasNext: state.duskCursor < dusk.length - 1,
+        };
+      }
       const interactions = chapter.day.interactions;
       const idx = interactions.findIndex((i) => i.id === state.activeInteractionId);
       const it = interactions[idx] ?? interactions[0];

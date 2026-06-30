@@ -5,6 +5,7 @@ import {
   reduce,
   getView,
   visibleOptions,
+  currentExpression,
   type ChapterData,
   type EndingRank,
   type GameState,
@@ -76,7 +77,7 @@ describe("四級結局可達性", () => {
       radio: "聽完，一個字都不打斷",
       grief: "跟著哼，替她接上下半句",
       identity: "「我會替他，把話帶到。」",
-      farewell: "替那個敲不動的早晨，敲完最後三下",
+      farewell: "替那個敲不動的早晨，把那一下補上",
     });
     expect(rankOf(s)).toBe("best");
     expect(s.permanentLoss).toBe(false);
@@ -91,7 +92,7 @@ describe("四級結局可達性", () => {
       radio: "聽完，一個字都不打斷",
       grief: "跟著哼，替她接上下半句",
       identity: "「是我。我回來了。」（順著她）",
-      farewell: "替那個敲不動的早晨，敲完最後三下",
+      farewell: "替那個敲不動的早晨，把那一下補上",
     });
     expect(rankOf(s)).toBe("good");
     expect(s.collected).toContain("soothed");
@@ -104,7 +105,7 @@ describe("四級結局可達性", () => {
       radio: "關掉",
       grief: "出聲安撫她",
       identity: "沉默，不忍心回答",
-      farewell: "替那個敲不動的早晨，敲完最後三下",
+      farewell: "替那個敲不動的早晨，把那一下補上",
     });
     expect(rankOf(s)).toBe("bad");
     expect(s.permanentLoss).toBe(true);
@@ -113,17 +114,22 @@ describe("四級結局可達性", () => {
     expect(s.collected).not.toContain("door_opened");
   });
 
-  it("最壞(worst)：開門查看 → worst(不可逆)", () => {
-    const s = play({
-      knock: "開門查看",
-      radio: "聽完，一個字都不打斷",
-      grief: "出聲安撫她",
-      identity: "沉默，不忍心回答",
-      farewell: "沉默地陪著她",
-    });
+  it("最壞(worst)：開門查看 → 當層直接收束、不經 truth、不跑後續層(修正 F1+N2)", () => {
+    let s = initState(ch01);
+    s = enterDay(s);
+    s = playDay(s);
+    expect(s.phase).toBe("night");
+    expect(s.nightChoiceIndex).toBe(0);
+    const knock = ch01.night.choices[0];
+    const idx = visibleOptions(knock, s.collected, s.vars).findIndex(
+      (o) => o.label === "開門查看",
+    );
+    s = reduce(s, { type: "CHOOSE", optionIndex: idx });
+    expect(s.phase).toBe("ending"); // 直接結局,沒進 outcome/後續層/truth
     expect(rankOf(s)).toBe("worst");
     expect(s.permanentLoss).toBe(true);
     expect(s.collected).toContain("door_opened");
+    expect(s.collected).not.toContain("truth_clue_radio"); // 證明沒跑到 L2
   });
 });
 
@@ -151,7 +157,7 @@ describe("requires 選項過濾", () => {
     expect(labels).toContain("跟著哼，替她接上下半句");
   });
 
-  it("L1 沒回應(不理會) → L4 看不到「敲完最後三下」(requires answered)", () => {
+  it("L1 沒回應(不理會) → L4 看不到「把那一下補上」(requires answered)", () => {
     let s = initState(ch01);
     s = enterDay(s);
     s = playDay(s);
@@ -163,10 +169,10 @@ describe("requires 選項過濾", () => {
     const labels = visibleOptions(farewell, s.collected, s.vars).map((o) => o.label);
     expect(farewell.id).toBe("farewell");
     expect(s.collected).not.toContain("answered");
-    expect(labels).not.toContain("替那個敲不動的早晨，敲完最後三下");
+    expect(labels).not.toContain("替那個敲不動的早晨，把那一下補上");
   });
 
-  it("L1 有回應(回敲) → L4 看得到「敲完最後三下」", () => {
+  it("L1 有回應(回敲) → L4 看得到「把那一下補上」", () => {
     let s = initState(ch01);
     s = enterDay(s);
     s = playDay(s);
@@ -177,7 +183,7 @@ describe("requires 選項過濾", () => {
     const farewell = ch01.night.choices[s.nightChoiceIndex];
     const labels = visibleOptions(farewell, s.collected, s.vars).map((o) => o.label);
     expect(s.collected).toContain("answered");
-    expect(labels).toContain("替那個敲不動的早晨，敲完最後三下");
+    expect(labels).toContain("替那個敲不動的早晨，把那一下補上");
   });
 });
 
@@ -192,6 +198,40 @@ describe("引擎機制", () => {
     expect(getView(s).phase).toBe("day");
     s = playDay(s);
     expect(s.phase).toBe("night");
+  });
+
+  it("白天讀完先經黃昏過場(dusk)再入夜(修正 F2)", () => {
+    let s = initState(ch01);
+    s = enterDay(s);
+    // 推進到所有互動讀完、進入 dusk(仍 day 但 activeInteractionId 為 null)
+    let guard = 0;
+    while (s.phase === "day" && s.activeInteractionId) {
+      s = reduce(s, { type: "ADVANCE_DIALOGUE" });
+      if (++guard > 1000) throw new Error("white day not converging");
+    }
+    expect(s.phase).toBe("day");
+    expect(s.activeInteractionId).toBeNull();
+    const v = getView(s);
+    expect(v.phase).toBe("day");
+    if (v.phase === "day") expect(v.speaker).toBeUndefined(); // dusk 為敘述
+    // 走完 dusk → night
+    while (s.phase === "day") s = reduce(s, { type: "ADVANCE_DIALOGUE" });
+    expect(s.phase).toBe("night");
+  });
+
+  it("立繪表情節點驅動:跟著哼的 outcome 拍為 calm(非 broken)(修正 N1)", () => {
+    let s = initState(ch01);
+    s = enterDay(s);
+    s = playDay(s);
+    s = chooseByLabel(s, "回敲，試著回應她");
+    s = chooseByLabel(s, "聽完，一個字都不打斷");
+    const grief = ch01.night.choices[s.nightChoiceIndex];
+    const idx = visibleOptions(grief, s.collected, s.vars).findIndex(
+      (o) => o.label === "跟著哼，替她接上下半句",
+    );
+    s = reduce(s, { type: "CHOOSE", optionIndex: idx }); // 停在 outcome 拍(未 ACK)
+    expect(s.lastOutcome).toBeTruthy();
+    expect(currentExpression(s)).toBe("calm");
   });
 
   it("reduce 為純函式：不修改輸入 state", () => {
@@ -264,6 +304,13 @@ describe("loadChapter 把關", () => {
   it("opening speaker 不在 cast → throw", () => {
     const broken = structuredClone(rawCh01) as ChapterData;
     broken.cast = {};
+    expect(() => loadChapter(broken)).toThrow(/完整性/);
+  });
+
+  it("endsNightTo 指向不存在的結局 → throw", () => {
+    const broken = structuredClone(rawCh01) as ChapterData;
+    const door = broken.night.choices[0].options.find((o) => o.label === "開門查看")!;
+    door.endsNightTo = "ghost_ending";
     expect(() => loadChapter(broken)).toThrow(/完整性/);
   });
 });

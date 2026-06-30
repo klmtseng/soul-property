@@ -57,7 +57,9 @@ export function assertReferentialIntegrity(chapter: ChapterData): void {
     }
   }
 
-  // 夜晚選項：effects 的 var 要存在；requires 的旗標/var 要可解析
+  const endingIds = new Set(chapter.endings.map((e) => e.id));
+
+  // 夜晚選項：effects 的 var 要存在；requires 的旗標/var 要可解析；endsNightTo 指向真實結局
   for (const choice of chapter.night.choices) {
     for (const opt of choice.options) {
       for (const e of opt.effects ?? []) {
@@ -66,6 +68,9 @@ export function assertReferentialIntegrity(chapter: ChapterData): void {
         }
       }
       checkCondition(opt.requires, `choice "${choice.id}" 選項「${opt.label}」requires`, grantableFlags, varNames, errors);
+      if (opt.endsNightTo && !endingIds.has(opt.endsNightTo)) {
+        errors.push(`choice "${choice.id}" 選項「${opt.label}」endsNightTo="${opt.endsNightTo}" 找不到對應結局`);
+      }
     }
   }
 

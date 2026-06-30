@@ -41,6 +41,8 @@ export interface ChapterData {
   day: {
     interactions: DayInteraction[];
     fragments: Fragment[];
+    /** 白天讀完後、入夜前的過場敘述（選填）。 */
+    dusk?: string[];
   };
   night: {
     /** 各數值初始值（含 rage 等）。 */
@@ -85,6 +87,8 @@ export interface Fragment {
 export interface NightChoice {
   id: string;
   prompt: string;
+  /** 此關卡的立繪情緒（覆寫 rage 推導）。 */
+  mood?: Expression;
   options: NightOption[];
 }
 
@@ -96,6 +100,10 @@ export interface NightOption {
   unlocks?: string;
   /** 只有滿足此條件，選項才會出現（後面關卡可依前面抉擇適配）。 */
   requires?: Condition;
+  /** 終局選項：選了直接收束到此 ending id，跳過其餘夜晚層與真相。 */
+  endsNightTo?: string;
+  /** 此選項 outcome 拍的立繪情緒（覆寫 rage 推導）。 */
+  expression?: Expression;
   scare?: boolean;
   outcome: string;
 }
@@ -115,6 +123,8 @@ export interface GameState {
   doneInteractions: string[];
   activeInteractionId: string | null;
   dialogueCursor: number;
+  /** 黃昏過場游標（activeInteractionId 為 null 且 phase=day 時生效）。 */
+  duskCursor: number;
 
   // 夜晚
   nightChoiceIndex: number;

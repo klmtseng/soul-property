@@ -26,7 +26,8 @@
         "var": { "type": "string", "minLength": 1 },
         "delta": { "type": "number" }
       }
-    }
+    },
+    "expression": { "type": "string", "enum": ["calm", "uneasy", "broken"] }
   },
   "properties": {
     "schemaVersion": { "type": "integer", "minimum": 1 },
@@ -105,6 +106,10 @@
               "text": { "type": "string", "minLength": 1 }
             }
           }
+        },
+        "dusk": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
         }
       }
     },
@@ -129,6 +134,7 @@
             "properties": {
               "id": { "type": "string", "minLength": 1 },
               "prompt": { "type": "string", "minLength": 1 },
+              "mood": { "$ref": "#/definitions/expression" },
               "options": {
                 "type": "array",
                 "minItems": 2,
@@ -141,6 +147,8 @@
                     "effects": { "type": "array", "items": { "$ref": "#/definitions/effect" } },
                     "unlocks": { "type": "string", "minLength": 1 },
                     "requires": { "$ref": "#/definitions/condition" },
+                    "endsNightTo": { "type": "string", "minLength": 1 },
+                    "expression": { "$ref": "#/definitions/expression" },
                     "scare": { "type": "boolean" },
                     "outcome": { "type": "string", "minLength": 1 }
                   }

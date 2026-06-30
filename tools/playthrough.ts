@@ -70,10 +70,15 @@ function playPath(title: string, skip: string[], picks: string[]) {
   s = playDay(s); // 自動入夜
   console.log("\n── 夜晚 ──");
   ch.night.rules.forEach((r, i) => console.log(`  守則${i + 1}. ${r}`));
-  for (const p of picks) s = choose(s, p);
-  console.log("\n── 真相 ──\n  " + render(s).replace(/\n/g, "\n  "));
-  console.log(`  vars=${JSON.stringify(s.vars)}`);
-  s = reduce(s, { type: "REVEAL_TO_ENDING" });
+  for (const p of picks) {
+    if (s.phase !== "night") break; // 終局選項可能已當層收束
+    s = choose(s, p);
+  }
+  if (s.phase === "truth") {
+    console.log("\n── 真相 ──\n  " + render(s).replace(/\n/g, "\n  "));
+    console.log(`  vars=${JSON.stringify(s.vars)}`);
+    s = reduce(s, { type: "REVEAL_TO_ENDING" });
+  }
   console.log("\n── 結局 ──\n  " + render(s).replace(/\n/g, "\n  "));
 }
 
@@ -82,7 +87,7 @@ playPath("最好結局 —— 回應 + 接住歌 + 替他帶話 + 想通三下",
   "聽完，一個字都不打斷",
   "跟著哼，替她接上下半句",
   "「我會替他，把話帶到。」",
-  "替那個敲不動的早晨，敲完最後三下",
+  "替那個敲不動的早晨，把那一下補上",
 ]);
 playPath("最壞結局 —— 開門撞見", [], [
   "開門查看",

@@ -25,12 +25,13 @@ function sim(picks: string[]): GameState {
   s = reduce(s, { type: "BEGIN" });
   while (s.phase === "day") s = reduce(s, { type: "ADVANCE_DIALOGUE" });
   for (const label of picks) {
+    if (s.phase !== "night") break; // 終局選項可能已當層收束
     const c = ch.night.choices[s.nightChoiceIndex];
     const idx = visibleOptions(c, s.collected, s.vars).findIndex((o) => o.label === label);
     s = reduce(s, { type: "CHOOSE", optionIndex: idx });
     s = reduce(s, { type: "ACK_OUTCOME" });
   }
-  return reduce(s, { type: "REVEAL_TO_ENDING" });
+  return s.phase === "truth" ? reduce(s, { type: "REVEAL_TO_ENDING" }) : s;
 }
 
 p(`# 《敲牆的人》劇情結構 + 全文清單\n`);
@@ -83,9 +84,9 @@ p("```");
 // ── 四級結局代表路徑（引擎實算）────────────────────────────────────────
 p(`\n### 四級結局 · 代表路徑（引擎實算）\n`);
 const paths: { name: string; skip: string[]; picks: string[] }[] = [
-  { name: "全做對+替他帶話+接住歌（全互動）", skip: [], picks: ["回敲，試著回應她", "聽完，一個字都不打斷", "跟著哼，替她接上下半句", "「我會替他，把話帶到。」", "替那個敲不動的早晨，敲完最後三下"] },
-  { name: "接住歌但身分關順著她（缺 bridged）", skip: [], picks: ["回敲，試著回應她", "聽完，一個字都不打斷", "跟著哼，替她接上下半句", "「是我。我回來了。」（順著她）", "替那個敲不動的早晨，敲完最後三下"] },
-  { name: "回應+敲三下但關掉收音機", skip: [], picks: ["回敲，試著回應她", "關掉", "出聲安撫她", "沉默，不忍心回答", "替那個敲不動的早晨，敲完最後三下"] },
+  { name: "全做對+替他帶話+接住歌（全互動）", skip: [], picks: ["回敲，試著回應她", "聽完，一個字都不打斷", "跟著哼，替她接上下半句", "「我會替他，把話帶到。」", "替那個敲不動的早晨，把那一下補上"] },
+  { name: "接住歌但身分關順著她（缺 bridged）", skip: [], picks: ["回敲，試著回應她", "聽完，一個字都不打斷", "跟著哼，替她接上下半句", "「是我。我回來了。」（順著她）", "替那個敲不動的早晨，把那一下補上"] },
+  { name: "回應+敲三下但關掉收音機", skip: [], picks: ["回敲，試著回應她", "關掉", "出聲安撫她", "沉默，不忍心回答", "替那個敲不動的早晨，把那一下補上"] },
   { name: "開門查看", skip: [], picks: ["開門查看", "聽完，一個字都不打斷", "後退，離牆遠一點", "「我不是他。」（糾正她）", "沉默地陪著她"] },
 ];
 p(`| 代表路徑 | vars | 結局 rank |`);

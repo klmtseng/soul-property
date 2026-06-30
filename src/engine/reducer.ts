@@ -10,6 +10,7 @@ export function initState(chapter: ChapterData): GameState {
     doneInteractions: [],
     activeInteractionId: null,
     dialogueCursor: 0,
+    duskCursor: 0,
     nightChoiceIndex: 0,
     vars: { ...chapter.night.startVars },
     lastOutcome: null,
@@ -58,7 +59,17 @@ export function reduce(state: GameState, action: Action): GameState {
     }
 
     case "ADVANCE_DIALOGUE": {
-      if (state.phase !== "day" || !state.activeInteractionId) return state;
+      if (state.phase !== "day") return state;
+      const dusk = chapter.day.dusk ?? [];
+
+      // 黃昏過場狀態（互動全讀完、activeInteractionId 為 null）。
+      if (!state.activeInteractionId) {
+        if (state.duskCursor < dusk.length - 1) {
+          return { ...state, duskCursor: state.duskCursor + 1 };
+        }
+        return { ...state, phase: "night", nightChoiceIndex: 0, lastOutcome: null };
+      }
+
       const interactions = chapter.day.interactions;
       const idx = interactions.findIndex((i) => i.id === state.activeInteractionId);
       const it = interactions[idx];
@@ -83,7 +94,16 @@ export function reduce(state: GameState, action: Action): GameState {
           dialogueCursor: 0,
         };
       }
-      // 全部互動讀完 → 入夜。
+      // 全部互動讀完 → 若有黃昏過場先播，否則直接入夜。
+      if (dusk.length > 0) {
+        return {
+          ...state,
+          collected,
+          doneInteractions: done,
+          activeInteractionId: null,
+          duskCursor: 0,
+        };
+      }
       return {
         ...state,
         collected,
@@ -102,12 +122,22 @@ export function reduce(state: GameState, action: Action): GameState {
       const opts = visibleOptions(choice, state.collected, state.vars);
       const opt = opts[action.optionIndex];
       if (!opt) return state;
-      return {
-        ...state,
-        vars: applyEffects(state.vars, opt.effects),
-        collected: opt.unlocks ? addFlag(state.collected, opt.unlocks) : state.collected,
-        lastOutcome: opt.outcome,
-      };
+      const vars = applyEffects(state.vars, opt.effects);
+      const collected = opt.unlocks ? addFlag(state.collected, opt.unlocks) : state.collected;
+      // 終局選項：直接收束到指定結局，跳過 outcome 拍、其餘夜晚層與真相。
+      if (opt.endsNightTo) {
+        const ending = chapter.endings.find((e) => e.id === opt.endsNightTo);
+        return {
+          ...state,
+          vars,
+          collected,
+          lastOutcome: null,
+          phase: "ending",
+          endingId: ending ? ending.id : opt.endsNightTo,
+          permanentLoss: ending?.permanentLoss ?? false,
+        };
+      }
+      return { ...state, vars, collected, lastOutcome: opt.outcome };
     }
 
     case "ACK_OUTCOME": {
